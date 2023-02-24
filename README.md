@@ -56,3 +56,24 @@ Each file is a 20x20xT tensor.
 | 2         | Timestamp with 10 Hz sampling rate      |
 
 We use Scipy to read the `.mat` files with `scipy.io.loadmat()`.
+
+#### Known Issues
+
+The directory `20181130-VS` contains no `6-link` subdirectory.
+
+## In vs Out of Domain
+
+As we are testing in vs out of domain performance, we will use the following 
+data split for train, validation, and test.
+
+| Set        | Room IDs  | User IDs   |
+|------------|-----------|------------|
+| Training   | 1, 2      | 1, 2, 4, 5 |
+| Validation | 2         | 10-17      |
+| Test       | 3         | 3, 7, 8, 9 |
+
+We split it this way to make sure that the test set is truly unseen while the validation set is an unseen room-user combination instead of truly unseen.
+
+## Todo
+
+- [ ] Make a single-file version of the data sources to make file access faster
