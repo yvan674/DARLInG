@@ -66,14 +66,45 @@ The directory `20181130-VS` contains no `6-link` subdirectory.
 As we are testing in vs out of domain performance, we will use the following 
 data split for train, validation, and test.
 
-| Set        | Room IDs  | User IDs   |
-|------------|-----------|------------|
-| Training   | 1, 2      | 1, 2, 4, 5 |
-| Validation | 2         | 10-17      |
-| Test       | 3         | 3, 7, 8, 9 |
+| Set                 | Room IDs | User IDs   | Torso Location |
+|---------------------|----------|------------|----------------|
+| Training            | 1, 2     | 1, 2, 4, 5 | 1-5            |
+| Validation          | 1        | 10-17      | 1-5            |
+| Test Room           | 3        | 3, 7, 8, 9 | 1-5            |
+| Test Torso Location | 1        | 1          | 6-8            |
 
 We split it this way to make sure that the test set is truly unseen while the validation set is an unseen room-user combination instead of truly unseen.
+
+We only use gestures 1-6, since these are the gestures which have samples from all participants.
+
+
+## Small Dataset
+
+We create a small version of the  dataset containing 2 repetitions of each action and only 10% of all available data.
+
+Torso locations in each room and in general are balance for torso locations 1-5.
+Torso location 6-8 only exists in room 1 with user 1.
+
+Face orientation is balanced as well.
+All face orientations are done by every user in every room they participate in.
+
+Gestures are balanced for each user, i.e., user 1 does every gesture the same number of times, but gestures are not balanced overall.
+
+Our approach is:
+1. Select those room ids and user ids, and torso locations as listed above.
+2. Choose a 10% stratified random set, stratified based on room id, user id, and gesture
+3. Choose 2 random repetitions for each sample
 
 ## Todo
 
 - [ ] Make a single-file version of the data sources to make file access faster
+
+## Work Log
+
+- Went through the dataset documentation to figure out what the dataset looks like
+- Used `csiread` to figure out what the actual data looks like
+- Tried parsing the files naïvely, but this failed
+- Went through the entire dataset again, analyzing each combination of room id, user id, etc. to figure out how to split the dataset
+- Considered how to split the dataset in a way that makes sense semantically
+- Considered how to split the dataset into a small version.
+- 
