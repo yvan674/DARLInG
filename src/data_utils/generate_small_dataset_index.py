@@ -77,7 +77,7 @@ def parse_files(widar_dir: Path, num_repetitions: int):
         widar_dir: Path to the Widar3.0 dataset.
         num_repetitions: Number of repetitions to choose for each sample
 
-    A dictionary containing file data is saved. The dictionary has keys:
+    A list of dicts containing file data is saved. The dictionary has keys:
     [user, room_num, date, torso_location, face_orientation, gesture,
     csi_stems, csi_paths_n, bvp_path_n,].
     There may be csi_paths_0, csi_paths_1, etc. based on num_repetitions.
