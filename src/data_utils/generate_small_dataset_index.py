@@ -31,11 +31,10 @@ from pathlib import Path
 from warnings import warn
 from tqdm import tqdm
 import random
-import pandas as pd
 import pickle
 
-from data_utils import calculate_total_dirs, TRAINING_SELECTION, \
-    VALIDATION_SELECTION, TEST_ROOM_SELECTION, TEST_LOCATION_SELECTION, \
+from data_utils import TRAINING_SELECTION, VALIDATION_SELECTION, \
+    TEST_ROOM_SELECTION, TEST_LOCATION_SELECTION, \
     ROOM_DATE_MAPPING, DATE_ROOM_MAPPING
 
 
@@ -71,18 +70,17 @@ def find_bvp_of_csi(bvp_dir: Path, sample_record: dict) -> list[Path]:
     return bvp_paths
 
 
-def parse_files(widar_dir: Path, num_repetitions: int) -> pd.DataFrame:
+def parse_files(widar_dir: Path, num_repetitions: int):
     """Select files based on the selection criteria as a Pandas DataFrame.
 
     Args:
         widar_dir: Path to the Widar3.0 dataset.
         num_repetitions: Number of repetitions to choose for each sample
 
-    Returns:
-        A dataframe containing file data. The dataframe has columsn:
-        [user, room_num, date, torso_location, face_orientation, gesture,
-        csi_stems, csi_paths_n, bvp_path_n,].
-        There may be csi_paths_0, csi_paths_1, etc. based on num_repetitions.
+    A dictionary containing file data is saved. The dictionary has keys:
+    [user, room_num, date, torso_location, face_orientation, gesture,
+    csi_stems, csi_paths_n, bvp_path_n,].
+    There may be csi_paths_0, csi_paths_1, etc. based on num_repetitions.
     """
     random.seed(0)
 
@@ -160,9 +158,9 @@ def parse_files(widar_dir: Path, num_repetitions: int) -> pd.DataFrame:
         for key in keys_to_del:
             del sample_records[key]
 
-        split_df = pd.DataFrame.from_records(list(sample_records.values()))
-        split_df.to_pickle(widar_dir / f"{split_name}_index_small.pkl")
-
+        sample_list = list(sample_records.values())
+        with open(widar_dir / f"{split_name}_index_small.pkl", "wb") as f:
+            pickle.dump(sample_list, f)
 
 
 if __name__ == '__main__':
