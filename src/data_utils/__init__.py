@@ -46,27 +46,27 @@ DATE_ROOM_MAPPING = {
 # All of these are sets, since checking set membership is about 28% faster with
 # sets instead of tuples and around 30% faster than with lists.
 TRAINING_SELECTION = {
-    "user": {1, 2, 4, 5},
+    "user": {"1", "2", "4", "5"},
     "room_num": {1, 2},
-    "torso_location": {1, 2, 3, 4, 5},
+    "torso_location": {"1", "2", "3", "4", "5"},
 }
 
 VALIDATION_SELECTION = {
-    "user": {10, 11, 12, 13, 14, 15, 16, 17},
+    "user": {"10", "11", "12", "13", "14", "15", "16", "17"},
     "room_num": {1},
-    "torso_location": {1, 2, 3, 4, 5}
+    "torso_location": {"1", "2", "3", "4", "5"}
 }
 
 TEST_ROOM_SELECTION = {
-    "user": {3, 7, 8, 9},
+    "user": {"3", "7", "8", "9"},
     "room_num": {3},
-    "torso_location": {1, 2, 3, 4, 5}
+    "torso_location": {"1", "2", "3", "4", "5"}
 }
 
 TEST_LOCATION_SELECTION = {
-    "user": {1},
-    "room": {1},
-    "torso_location": {6, 7, 8}
+    "user": {"1"},
+    "room_num": {1},
+    "torso_location": {"6", "7", "8"}
 }
 
 
