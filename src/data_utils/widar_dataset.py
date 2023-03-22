@@ -2,6 +2,7 @@
 
 Loads both BVP and CSI information from the Widar3.0 Dataset.
 """
+import pickle
 import random
 from pathlib import Path
 from typing import List
@@ -11,12 +12,10 @@ import numpy as np
 from scipy.io import loadmat
 from torch.utils.data import Dataset
 
-from data_utils import ROOM_DATE_MAPPING
-
 
 class WidarDataset(Dataset):
-    def __init__(self, root_path: Path, rooms: List[int], users: List[str],
-                 random_seed: int = 0):
+    def __init__(self, root_path: Path, split_name: str, is_small: bool,
+                 stack_mode: str):
         """Torch dataset class for Widar3.0.
 
         Returned values are 4-tuples containing CSI amplitude, CSI phase,
@@ -26,6 +25,11 @@ class WidarDataset(Dataset):
         dimensions being the x and y velocitiy axes and the 3rd dimension
         being the timestamp.
 
+        Note that there is an oversight in the implementation of the small
+        dataset generation script where repetitions are turned into one entry.
+        We fix this by counting the number of repetitions and multiplying the
+        get_item index by the appropriate amount.
+
         A single data point in this dataset consists of:
         1) 4-D array of amplitudes with the shape [pn, cn, an, rn] where:
             - pn: packet number (timestamp)
@@ -34,85 +38,88 @@ class WidarDataset(Dataset):
             - rn: receiver number [0,...,5]
         2) 4-D array of phase shifts with the same shape.
         3) BVP as 3-D tensor of shape [20, 20, T], where T is the timestep
-        4) The gesture target as an int value [0, 21].
+        4) Information about the sample as a dictionary with keys [`user`,
+           `room_num`, `date`, `torso_location`, `face_orientation`, `gesture`]
 
         Args:
             root_path: Root path of the data directory
-            rooms: The rooms numbers to include.
-            users: The users IDs to include. should be in the format `userX`.
-            random_seed: Seed used for shuffling the dataset.
+            split_name: Name of the split this dataset should be. Options are
+                [`train`, `validation`, `test_room`, `test_location`]
+            is_small: True if this is the small version of the dataset.
+            stack_mode: How to stack the CSI arrays. Options are [`fill`,
+                `truncate`]
         """
-        # First build the list of all CSI files that we have
-        csi_dirs = []
-        self.bvp_dir = root_path / "BVP"  # Used to find corresponding BVP file
-        for room in rooms:
-            for dir_fp in ROOM_DATE_MAPPING[room]:
-                csi_dirs.append(root_path / "CSI" / dir_fp)
+        self.data_path = root_path
+        self.split_name = split_name
+        self.is_small = is_small
+        if stack_mode not in ("fill, truncate"):
+            raise ValueError(f"stack_mode {stack_mode} is not one of the "
+                             f"possible options. Possible options are [`fill`, "
+                             f"`truncate`].")
+        self.stack_mode = stack_mode
+        if is_small:
+            data_dir = root_path / "widar_small"
+            index_fp = data_dir / f"{split_name}_index_small.pkl"
+            self.data_path = data_dir / split_name
+        else:
+            raise NotImplementedError("Normal sized dataset is not yet "
+                                      "implemented.")
+        with open(index_fp, "rb") as f:
+            self.data_records: List[dict] = pickle.load(f)
 
-        # Calculate total subdirs to go through until user_dir
-        csi_user_dirs = [user_dir
-                         for user_dir in [list(csi_date_dir.iterdir())
-                                          for csi_date_dir in csi_dirs]]
+        if self.is_small:
+            self.num_repetitions = len(self.data_records[0]["csi_stems"])
+        else:
+            self.num_repetitions = 1
 
-
-        # Then goes through every file in each dir and checks whether we want
-        # to read it or not based on the user ID
-        # csi_files is a dictionary mappping of identifiers to all 6 files with
-        # that identifier (6 for the 6 receivers)
-        self.csi_files = {}
-        self.bvp_files = {}
-        self.gesture = {}
-        for csi_date_dir in csi_dirs:
-            for csi_user_dir in csi_date_dir.iterdir():
-                if csi_user_dir.stem.startswith("."):
-                    # Ignore system files
-                    continue
-                if csi_user_dir.stem in users:
-                    for csi_file in csi_user_dir.iterdir():
-                        if csi_file.stem.startswith("."):
-                            # Ignore system files
-                            continue
-                        # identifier is something like user6-1-1-1-1
-                        identifier = csi_date_dir.stem + csi_file.stem[:-3]
-                        try:
-                            bvp_file = self._get_corresponding_bvp_fp(csi_file)
-                        except FileNotFoundError:
-                            continue
-                        if identifier in self.csi_files:
-                            self.csi_files[identifier].append(csi_file)
-                        else:
-                            self.csi_files[identifier] = [csi_file]
-                            self.bvp_files[identifier] = bvp_file
-                            self.gesture[identifier] = self._gesture(csi_file)
-        self.identifiers = sorted(list(self.csi_files.keys()))
-        random.Random(random_seed).shuffle(self.identifiers)
-
-    def _get_corresponding_bvp_fp(self, fp: Path) -> Path:
-        """Finds the corresponding BVP file from a CSI file path."""
-        date_dir = self.bvp_dir / (fp.parents[1].stem + "-VS")
-        user_dir = date_dir / "6-link" / fp.parent.stem
-        for bvp_file in user_dir.iterdir():
-            if bvp_file.stem.startswith(fp.stem[:-3]):
-                return bvp_file
-        raise FileNotFoundError
-
-    @staticmethod
-    def _gesture(fp: Path):
-        """Gets the gesture performed from a CSI file path."""
-        return int(fp.stem[fp.stem.index("-") + 1])
-
-    @staticmethod
-    def _load_csi_file(csi_file_path: Path) -> np.ndarray:
+    def _load_csi_file(self, csi_file_path: Path) -> np.ndarray:
         """Copy-pasted from csiread examples. Reads a single CSI file.
 
          Returns:
              CSI [pn, cn, an, 1] where pn is the packet number, cn the
              subcarrier channel number, and an the antenna number.
          """
+        if self.is_small:
+            csi_file_path = self.data_path / csi_file_path.name
         csidata = csiread.Intel(str(csi_file_path), if_report=False)
         csidata.read()
         csi = csidata.get_scaled_csi_sm(True)[:, :, :, :1]
         return csi
+
+    def _load_bvp_file(self, bvp_file_path: Path) -> np.ndarray:
+        """Loads a BVP file taking into account if this is a small dataset."""
+        if self.is_small:
+            bvp_file_path = self.data_path / bvp_file_path.name
+        return loadmat(str(bvp_file_path))["velocity_spectrum_ro"]
+
+    def __str__(self):
+        return f"WidarDataset: {self.split_name}"
+
+    def __repr__(self):
+        return f"WidarDataset({self.split_name}, {self.data_path}, " \
+               f"is_small={self.is_small}"
+
+    def __len__(self):
+        return len(self.data_records) * self.num_repetitions
+
+    def _stack_csi_arrays(self, csi_arrays: List[np.ndarray]) -> np.ndarray:
+        """Stacks the CSI arrays according to the stack mode specified."""
+        lengths = [len(arr) for arr in csi_arrays]
+        match self.stack_mode:
+            case "fill":
+                stacked_array = np.zeros((max(lengths), 30, 3, 6),
+                                         dtype=complex)
+                for i, arr in enumerate(csi_arrays):
+                    s = arr.shape
+                    stacked_array[:s[0], :, :, i] = arr[:, :, :, 0]
+                return stacked_array
+            case "truncate":
+                min_len = min(lengths)
+                stacked_array = np.zeros((min_len, 30, 3, 6),
+                                         dtype=complex)
+                for i, arr in enumerate(csi_arrays):
+                    stacked_array[:, :, :, i] = arr[:min_len, :, :, 0]
+                return stacked_array
 
     def __getitem__(self, item):
         """Gets a single datapoint.
@@ -120,16 +127,24 @@ class WidarDataset(Dataset):
         Returns:
             CSI amplitude, CSI phase, BVP, y
         """
-        identifier = self.identifiers[item]
+        if self.num_repetitions > 1:
+            data_records_index, csi_index = divmod(item, self.num_repetitions)
+        else:
+            data_records_index = item
+            csi_index = 0
+
+        data_record = self.data_records[data_records_index]
         csi_files = [self._load_csi_file(fp)
-                     for fp in self.csi_files[identifier]]
-        csi = np.stack(csi_files, axis=3)
+                     for fp in data_record[f"csi_paths_{csi_index}"]]
+        csi = self._stack_csi_arrays(csi_files)
         amp = np.absolute(csi)
         phase = np.angle(csi)
-        y = self.gesture[identifier]
-        bvp = loadmat(str(self.bvp_files[identifier]))
+        info = {data_record[k] for k in ("user", "room_num", "date",
+                                         "torso_location", "face_orientation",
+                                         "gesture")}
+        bvp = self._load_bvp_file(data_record[f"bvp_paths_{csi_index}"])
 
-        return amp, phase, bvp, y
+        return amp, phase, bvp, info
 
 
 if __name__ == '__main__':
@@ -139,7 +154,5 @@ if __name__ == '__main__':
     p.add_argument("FP", type=Path,
                    help="Path to the data root.")
     args = p.parse_args()
-    d1 = WidarDataset(args.FP, [1], ["user1"])
-    d2 = WidarDataset(args.FP, [1, 2], ["user1", "user6"])
-    d3 = WidarDataset(args.FP, [3], ["user3", "user7", "user8", "user9"])
-
+    d1 = WidarDataset(args.FP, "train", is_small=True, stack_mode="fill")
+    breakpoint()
