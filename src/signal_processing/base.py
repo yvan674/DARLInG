@@ -16,11 +16,12 @@ class SignalProcessor(ABC):
         pass
 
     @abstractmethod
-    def process(self, x: np.ndarray) -> np.ndarray:
+    def process(self, x: np.ndarray, axis: int = 0) -> np.ndarray:
         """Processes the signal.
 
         Args:
             signal: Signal to process.
+            axis: Axis to apply the processing on.
 
         Returns:
             Processed signal.

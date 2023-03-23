@@ -9,7 +9,7 @@ Author:
 import numpy as np
 from scipy import signal
 
-from src.signal_processing.base import SignalProcessor
+from signal_processing.base import SignalProcessor
 
 
 class LowPassFilter(SignalProcessor):
@@ -33,38 +33,32 @@ class LowPassFilter(SignalProcessor):
         self.b, self.a = signal.butter(self.order, cutoff_norm, btype='low',
                                        analog=False, output="ba")
 
-    def process(self, x: np.ndarray) -> np.ndarray:
+    def process(self, x: np.ndarray, axis: int = 0) -> np.ndarray:
         """Processes the signal.
 
         Args:
             x: Signal to process.
+            axis: Axis to apply the processing on.
 
         Returns:
             Processed signal.
         """
-        return signal.filtfilt(self.b, self.a, x)
+        return signal.filtfilt(self.b, self.a, x, axis=axis)
 
 
 if __name__ == '__main__':
-    import matplotlib.pyplot as plt
+    from signal_processing import plot_signals
     fs = 1000
-
-    def plot_signals(time_steps, original, filtered):
-        plt.plot(time_steps, original, label='Original')
-        plt.plot(time_steps, filtered, label='Filtered')
-        plt.legend()
-        plt.show()
 
     # Try this out with the Widar dataset data
     from data_utils import WidarDataset
     from pathlib import Path
     data = WidarDataset(Path("../../data/"), "train", True)
-    x = data[0][0][:, 0, 0]
-    signal_time_cutoff = int(np.argwhere(x == 0)[0])
+    x = data[0][0]
+    signal_time_cutoff = 1952
     x = x[:signal_time_cutoff]
     t = np.arange(len(x))
 
-    for cutoff in (10, 50, 200, 400):
-        lpf = LowPassFilter(cutoff, fs)
-        filtered_signal = lpf(x)
-        plot_signals(t, x, filtered_signal)
+    lpf = LowPassFilter(50, fs)
+    filtered_signal = lpf(x)
+    plot_signals(t, x[:, 0, 0], filtered_signal[:, 0, 0])
