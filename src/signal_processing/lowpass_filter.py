@@ -33,7 +33,7 @@ class LowPassFilter(SignalProcessor):
         self.b, self.a = signal.butter(self.order, cutoff_norm, btype='low',
                                        analog=False, output="ba")
 
-    def process(self, x: np.ndarray, axis: int = 0) -> np.ndarray:
+    def process(self, x: np.ndarray, axis: int = 0, **kwargs) -> np.ndarray:
         """Processes the signal.
 
         Args:

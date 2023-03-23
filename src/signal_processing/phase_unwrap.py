@@ -16,7 +16,7 @@ class PhaseUnwrap(SignalProcessor):
         """Unwraps the phase of the CSI array."""
         super().__init__()
 
-    def process(self, x: np.ndarray, axis: int = 0) -> np.ndarray:
+    def process(self, x: np.ndarray, axis: int = 0, **kwargs) -> np.ndarray:
         """Processes the signal.
 
         Args:
