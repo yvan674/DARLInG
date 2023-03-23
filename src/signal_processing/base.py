@@ -20,7 +20,7 @@ class SignalProcessor(ABC):
         """Processes the signal.
 
         Args:
-            signal: Signal to process.
+            x: Signal to process.
 
         Returns:
             Processed signal.
