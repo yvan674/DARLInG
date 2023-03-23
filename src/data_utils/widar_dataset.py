@@ -3,7 +3,6 @@
 Loads both BVP and CSI information from the Widar3.0 Dataset.
 """
 import pickle
-import random
 from pathlib import Path
 from typing import List
 
@@ -14,8 +13,9 @@ from torch.utils.data import Dataset
 
 
 class WidarDataset(Dataset):
-    def __init__(self, root_path: Path, split_name: str, is_small: bool,
-                 stack_mode: str):
+    csi_length = 2048
+
+    def __init__(self, root_path: Path, split_name: str, is_small: bool):
         """Torch dataset class for Widar3.0.
 
         Returned values are 4-tuples containing CSI amplitude, CSI phase,
@@ -41,22 +41,20 @@ class WidarDataset(Dataset):
         4) Information about the sample as a dictionary with keys [`user`,
            `room_num`, `date`, `torso_location`, `face_orientation`, `gesture`]
 
+        1 and 2 has a shape of [2048, 30, 18], where 2048 represents the time
+        series length, 30 the number of subcarrier channels, and 18 the number
+        of receiver antennas. 2048 was reached experimentally as being the
+        power of 2 closest to the mean CSI length.
+
         Args:
             root_path: Root path of the data directory
             split_name: Name of the split this dataset should be. Options are
                 [`train`, `validation`, `test_room`, `test_location`]
             is_small: True if this is the small version of the dataset.
-            stack_mode: How to stack the CSI arrays. Options are [`fill`,
-                `truncate`]
         """
         self.data_path = root_path
         self.split_name = split_name
         self.is_small = is_small
-        if stack_mode not in ("fill, truncate"):
-            raise ValueError(f"stack_mode {stack_mode} is not one of the "
-                             f"possible options. Possible options are [`fill`, "
-                             f"`truncate`].")
-        self.stack_mode = stack_mode
         if is_small:
             data_dir = root_path / "widar_small"
             index_fp = data_dir / f"{split_name}_index_small.pkl"
@@ -97,29 +95,24 @@ class WidarDataset(Dataset):
 
     def __repr__(self):
         return f"WidarDataset({self.split_name}, {self.data_path}, " \
-               f"is_small={self.is_small}"
+               f"is_small={self.is_small})"
 
     def __len__(self):
         return len(self.data_records) * self.num_repetitions
 
     def _stack_csi_arrays(self, csi_arrays: List[np.ndarray]) -> np.ndarray:
         """Stacks the CSI arrays according to the stack mode specified."""
-        lengths = [len(arr) for arr in csi_arrays]
-        match self.stack_mode:
-            case "fill":
-                stacked_array = np.zeros((max(lengths), 30, 3, 6),
-                                         dtype=complex)
-                for i, arr in enumerate(csi_arrays):
-                    s = arr.shape
-                    stacked_array[:s[0], :, :, i] = arr[:, :, :, 0]
-                return stacked_array
-            case "truncate":
-                min_len = min(lengths)
-                stacked_array = np.zeros((min_len, 30, 3, 6),
-                                         dtype=complex)
-                for i, arr in enumerate(csi_arrays):
-                    stacked_array[:, :, :, i] = arr[:min_len, :, :, 0]
-                return stacked_array
+        stacked_array = np.zeros((self.csi_length, 30, 18), dtype=complex)
+
+        for i, arr in enumerate(csi_arrays):
+            if arr.shape[0] >= self.csi_length:
+                s = self.csi_length
+            else:
+                s = arr.shape[0]
+
+            stacked_array[:s, :, i * 3:(i + 1) * 3] = arr[:s, :, :, 0]
+
+        return stacked_array
 
     def __getitem__(self, item):
         """Gets a single datapoint.
@@ -154,5 +147,6 @@ if __name__ == '__main__':
     p.add_argument("FP", type=Path,
                    help="Path to the data root.")
     args = p.parse_args()
-    d1 = WidarDataset(args.FP, "train", is_small=True, stack_mode="fill")
+    d1 = WidarDataset(args.FP, "train", is_small=True)
+    print(d1)
     breakpoint()

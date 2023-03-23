@@ -1,4 +1,5 @@
 from pathlib import Path
+from widar_dataset import WidarDataset
 
 # Maps which rooms were used on which dates
 ROOM_DATE_MAPPING = {
@@ -79,3 +80,8 @@ def calculate_total_dirs(csi_dir: Path) -> int:
                 if user_dir.is_dir():
                     total_dirs += 1
     return total_dirs
+
+
+__all__ = ["WidarDataset", "calculate_total_dirs", "ROOM_DATE_MAPPING",
+           "DATE_ROOM_MAPPING", "TRAINING_SELECTION", "VALIDATION_SELECTION",
+           "TEST_LOCATION_SELECTION", "TEST_ROOM_SELECTION"]
