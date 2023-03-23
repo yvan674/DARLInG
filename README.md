@@ -97,14 +97,33 @@ Our approach is:
 
 ## Todo
 
-- [ ] Make a single-file version of the data sources to make file access faster
-
-## Work Log
-
-- Went through the dataset documentation to figure out what the dataset looks like
-- Used `csiread` to figure out what the actual data looks like
-- Tried parsing the files naïvely, but this failed
-- Went through the entire dataset again, analyzing each combination of room id, user id, etc. to figure out how to split the dataset
-- Considered how to split the dataset in a way that makes sense semantically
-- Considered how to split the dataset into a small version.
-- 
+- [x] Go through the dataset documentation to figure out what the dataset looks like.
+- [x] Use `csiread` to figure out what the actual data looks like.
+- [x] Try parsing the files naïvely, but this failed.
+- [x] Go through the entire dataset again, analyzing each combination of room id, user id, etc. to figure out how to split the dataset.
+- [x] Consider how to split the dataset in a way that makes sense semantically.
+- [x] Consider how to split the dataset into a small version.
+- [x] Small version of the dataset which actually works.
+- [x] Check the distribution of CSI array lengths.
+- [x] Consider how to deal with uneven CSI array lengths.
+- [x] Implement a working dataset class, which stacks antennas and receivers together.
+- [x] Implement a signal processor base class.
+- [x] Implement a lowpass filter.
+- [x] Implement a phase unwrap filter.
+- [x] Implement a phase median and uniform filter.
+- [x] Implement a phase linear fit filter.
+- [x] Implement a phase derivative filter.
+- [x] Implement a pipeline class for all SignalProcessors
+- [ ] Implement a DWT transform processor
+- [ ] Implement a base signal-to-image transformer class
+- [ ] Implement DeepInsight for our dataset.
+- [ ] Implement Refined for our dataset.
+- [ ] Implement GAF for our dataset.
+- [ ] Implement MTF for our dataset.
+- [ ] Implement FGAF for our dataset.
+- [ ] Implement FMTF for our dataset.
+- [ ] Implement SignalPreprocessing module
+- [ ] Implement BVP dummy SignalPreprocessing module
+- [ ] Implement null agent
+- [ ] Implement known-domain agent
+- [ ] Implement experimentation framework for signal processing ablation study.
