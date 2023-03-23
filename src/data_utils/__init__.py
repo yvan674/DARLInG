@@ -1,5 +1,5 @@
 from pathlib import Path
-from widar_dataset import WidarDataset
+from data_utils.widar_dataset import WidarDataset
 
 # Maps which rooms were used on which dates
 ROOM_DATE_MAPPING = {

@@ -14,8 +14,8 @@ from torch.utils.data import Dataset
 
 class WidarDataset(Dataset):
     csi_length = 2048
-
-    def __init__(self, root_path: Path, split_name: str, is_small: bool):
+    def __init__(self, root_path: Path, split_name: str, is_small: bool,
+                 downsample_multiplier: int = 1):
         """Torch dataset class for Widar3.0.
 
         Returned values are 4-tuples containing CSI amplitude, CSI phase,
@@ -41,20 +41,27 @@ class WidarDataset(Dataset):
         4) Information about the sample as a dictionary with keys [`user`,
            `room_num`, `date`, `torso_location`, `face_orientation`, `gesture`]
 
-        1 and 2 has a shape of [2048, 30, 18], where 2048 represents the time
+        1 and 2 has a shape of [n, 30, 18], where n represents the time
         series length, 30 the number of subcarrier channels, and 18 the number
-        of receiver antennas. 2048 was reached experimentally as being the
-        power of 2 closest to the mean CSI length.
+        of receiver antennas. n is 2048 / downsampling_multiplier and was
+        reached experimentally as being the power of 2 closest to the mean CSI
+        length.
+
+        The CSI data is originally sampled at 1000 Hz.
 
         Args:
             root_path: Root path of the data directory
             split_name: Name of the split this dataset should be. Options are
                 [`train`, `validation`, `test_room`, `test_location`]
             is_small: True if this is the small version of the dataset.
+            downsample_multiplier: If downsampling is desired, the multiplier
+                for downsampling (e.g., 2 means only keep every other sample)
         """
         self.data_path = root_path
         self.split_name = split_name
         self.is_small = is_small
+        self.ts_length = self.csi_length // downsample_multiplier
+        self.downsample_multiplier = downsample_multiplier
         if is_small:
             data_dir = root_path / "widar_small"
             index_fp = data_dir / f"{split_name}_index_small.pkl"
@@ -106,11 +113,13 @@ class WidarDataset(Dataset):
 
         for i, arr in enumerate(csi_arrays):
             if arr.shape[0] >= self.csi_length:
-                s = self.csi_length
+                s = self.ts_length
             else:
                 s = arr.shape[0]
+            d = self.downsample_multiplier
 
-            stacked_array[:s, :, i * 3:(i + 1) * 3] = arr[:s, :, :, 0]
+            reshaped = arr[:self.csi_length:d, :, :, 0]
+            stacked_array[:s, :, i * 3:(i + 1) * 3] = reshaped
 
         return stacked_array
 
