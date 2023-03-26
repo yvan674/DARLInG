@@ -114,10 +114,9 @@ Our approach is:
 - [x] Implement a phase linear fit filter.
 - [x] Implement a phase derivative filter.
 - [x] Implement a pipeline class for all SignalProcessors
-- [ ] Implement a DWT transform processor
-- [ ] Implement a base signal-to-image transformer class
-- [ ] Implement DeepInsight for our dataset.
-- [ ] Implement Refined for our dataset.
+- [x] Implement DeepInsight for our dataset.
+  - DeepInsight can be simply imported
+- [ ] Implement REFINED for our dataset.
 - [ ] Implement GAF for our dataset.
 - [ ] Implement MTF for our dataset.
 - [ ] Implement FGAF for our dataset.
