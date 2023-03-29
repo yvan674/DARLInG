@@ -39,7 +39,7 @@ if __name__ == '__main__':
 
     data = WidarDataset(Path("../../data/"), "train", True)
     x = data[0][1]
-    signal_time_cutoff = 500
+    signal_time_cutoff = 100
     x = x[:signal_time_cutoff, :, :]
     t = np.arange(int(x.shape[0]))
 
@@ -49,9 +49,19 @@ if __name__ == '__main__':
     diff = PhaseDerivative()
     lpf = LowPassFilter(100, 1000)
     unwrapped_signal = pu(x)
+    plot_signals(t, x[:, 0, 0], unwrapped_signal[:, 0, 0], "Signal Unwrapping",
+                 "Raw CSI Phase", "Unwrapped CSI Phase")
     filtered_signal = filt(unwrapped_signal)
-    fitted_signal = fit(filtered_signal)
-    lowpass_signal = lpf(fitted_signal)
+    plot_signals(t, unwrapped_signal[:, 0, 0], filtered_signal[:, 0, 0],
+                 "Mode/Uniform Filtering", "Unwrapped CSI", "Filtered CSI")
+    lowpass_signal = lpf(filtered_signal)
+    plot_signals(t, filtered_signal[:, 0, 0], lowpass_signal[:, 0, 0],
+                 "Low Pass Filter", "Filtered CSI", "Low pass CSI")
     gradient_signal = diff(lowpass_signal)
+    plot_signals(t, lowpass_signal[:, 0, 0], gradient_signal[:, 0, 0],
+                 "Derivative", "Low pass CSI", "Derivative CSI")
 
-    plot_signals(t, gradient_signal[:, 0, 0], gradient_signal[:, 0, 0])
+    lowpass_raw = lpf(x)
+
+    plot_signals(t, lowpass_raw[:, 0, 0], gradient_signal[:, 0, 0],
+                 "Derivative", "Low Pass Raw CSI Phase", "Derivative CSI")
