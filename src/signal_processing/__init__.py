@@ -13,7 +13,8 @@ def plot_signals(time_steps, original, processed, title, original_label,
     plt.show()
 
 
-def plot_many_signals(time_steps, signals, labels, colors=None, title=None):
+def plot_many_signals(time_steps, signals, labels, colors=None, title=None,
+                      show_legend=True):
     """Plot an arbitrary number of signals on the same figure.
 
     Args:
@@ -22,6 +23,7 @@ def plot_many_signals(time_steps, signals, labels, colors=None, title=None):
         labels (list[str]): The labels for each signal.
         colors (list[Any]): The color for each signal. Optional.
         title (str): The title of the plot. Optional.
+        show_legend (bool): Whether to show the legend.
     """
     if title is not None:
         plt.title(title)
@@ -33,7 +35,8 @@ def plot_many_signals(time_steps, signals, labels, colors=None, title=None):
         for signal, label in zip(signals, labels):
             plt.plot(time_steps, signal, label=label)
 
-    plt.legend()
+    if show_legend:
+        plt.legend()
     plt.show()
 
 
