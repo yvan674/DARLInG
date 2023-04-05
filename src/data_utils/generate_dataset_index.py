@@ -1,4 +1,4 @@
-"""Generate Small Dataset Index.
+"""Generate Dataset Index.
 
 Creates an index of file paths to use for the small dataset.
 
@@ -43,7 +43,7 @@ def parse_args() -> Namespace:
     p = ArgumentParser()
     p.add_argument("DATA_FP", type=Path,
                    help="Path to the Widar3.0 dataset.")
-    p.add_argument("-n", "--num_repetitions", type=int, nargs="?", default=2,
+    p.add_argument("-n", "--num_repetitions", type=int, nargs="?", default=None,
                    help="Number of repetitions to choose for each sample")
 
     return p.parse_args()
@@ -70,12 +70,13 @@ def find_bvp_of_csi(bvp_dir: Path, sample_record: dict) -> list[Path]:
     return bvp_paths
 
 
-def parse_files(widar_dir: Path, num_repetitions: int):
+def parse_files(widar_dir: Path, num_repetitions: int | None):
     """Select files based on the selection criteria as a Pandas DataFrame.
 
     Args:
         widar_dir: Path to the Widar3.0 dataset.
-        num_repetitions: Number of repetitions to choose for each sample
+        num_repetitions: Number of repetitions to choose for each sample. If
+            None, all samples are used.
 
     A list of dicts containing file data is saved. The dictionary has keys:
     [user, room_num, date, torso_location, face_orientation, gesture,
@@ -138,10 +139,16 @@ def parse_files(widar_dir: Path, num_repetitions: int):
                     }
         keys_to_del = []
         for key in sample_records.keys():
-            chosen_files = random.sample(sample_records[key]["csi_stems"],
-                                         num_repetitions)
+            # Sample files to use
+            if num_repetitions is not None:
+                chosen_files = random.sample(sample_records[key]["csi_stems"],
+                                             num_repetitions)
+            else:
+                chosen_files = sample_records[key]["csi_stems"]
             sample_records[key]["csi_stems"] = sorted(chosen_files)
+
             bvp_paths = find_bvp_of_csi(bvp_dir, sample_records[key])
+
             if len(bvp_paths) != len(chosen_files):
                 keys_to_del.append(key)
             else:
@@ -157,11 +164,14 @@ def parse_files(widar_dir: Path, num_repetitions: int):
 
         if len(keys_to_del) > 0:
             warn(f"No BVP found for {len(keys_to_del)} files.")
+
         for key in keys_to_del:
             del sample_records[key]
 
         sample_list = list(sample_records.values())
-        with open(widar_dir / f"{split_name}_index_small.pkl", "wb") as f:
+        suffix = "_small" if num_repetitions is not None else ""
+
+        with open(widar_dir / f"{split_name}_index{suffix}.pkl", "wb") as f:
             pickle.dump(sample_list, f)
 
 
