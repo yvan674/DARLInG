@@ -153,6 +153,7 @@ Our approach is:
 - [x] Implement DeepInsight for our dataset.
   - DeepInsight can be simply imported
 - [x] Explore Phase unwrap shapes
+- [x] Calculate mean and std of the dataset.
 - [ ] Implement standard scalar.
 - [ ] Implement REFINED for our dataset.
 - [ ] Implement GAF for our dataset.
