@@ -47,21 +47,21 @@ if __name__ == '__main__':
     filt = PhaseFilter([3, 3, 1], [3, 3, 1])
     fit = PhaseLinearFit()
     diff = PhaseDerivative()
-    lpf = LowPassFilter(100, 1000)
+    lpf = LowPassFilter(200, 1000)
     unwrapped_signal = pu(x)
-    plot_signals(t, x[:, 0, 0], unwrapped_signal[:, 0, 0], "Signal Unwrapping",
-                 "Raw CSI Phase", "Unwrapped CSI Phase")
+    # plot_signals(t, x[:, 0, 0], unwrapped_signal[:, 0, 0], "Signal Unwrapping",
+    #              "Raw CSI Phase", "Unwrapped CSI Phase")
     filtered_signal = filt(unwrapped_signal)
-    plot_signals(t, unwrapped_signal[:, 0, 0], filtered_signal[:, 0, 0],
-                 "Mode/Uniform Filtering", "Unwrapped CSI", "Filtered CSI")
+    # plot_signals(t, unwrapped_signal[:, 0, 0], filtered_signal[:, 0, 0],
+    #              "Mode/Uniform Filtering", "Unwrapped CSI", "Filtered CSI")
     lowpass_signal = lpf(filtered_signal)
-    plot_signals(t, filtered_signal[:, 0, 0], lowpass_signal[:, 0, 0],
-                 "Low Pass Filter", "Filtered CSI", "Low pass CSI")
+    # plot_signals(t, filtered_signal[:, 0, 0], lowpass_signal[:, 0, 0],
+    #              "Low Pass Filter", "Filtered CSI", "Low pass CSI")
     gradient_signal = diff(lowpass_signal)
-    plot_signals(t, lowpass_signal[:, 0, 0], gradient_signal[:, 0, 0],
-                 "Derivative", "Low pass CSI", "Derivative CSI")
+    # plot_signals(t, lowpass_signal[:, 0, 0], gradient_signal[:, 0, 0],
+    #              "Derivative", "Low pass CSI", "Derivative CSI")
 
-    lowpass_raw = lpf(x)
+    lowpass_raw = LowPassFilter(250, 1000)(x)
 
     plot_signals(t, lowpass_raw[:, 0, 0], gradient_signal[:, 0, 0],
-                 "Derivative", "Low Pass Raw CSI Phase", "Derivative CSI")
+                 "Derivative", "Lowpass Raw CSI Phase", "Derivative CSI")
