@@ -39,7 +39,7 @@ def copy_files(widar_dir: Path):
             elif key.startswith("bvp_path"):
                 bvp_path_keys.append(key)
 
-        for sample in tqdm(samples):
+        for sample in tqdm(samples, desc=f"Copying files for {split_name}"):
             # Abandoning this for now because the size of each receiver array
             # is not consistent between receivers.
             # csi_arrays = []
