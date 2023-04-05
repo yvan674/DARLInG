@@ -34,12 +34,11 @@ class WidarDataset(Dataset):
         get_item index by the appropriate amount.
 
         A single data point in this dataset consists of:
-        1) 4-D array of amplitudes with the shape [pn, cn, an, rn] where:
+        1) 3-D array of amplitudes with the shape [pn, cn, an, rn] where:
             - pn: packet number (timestamp)
             - cn: Subcarrier channel number [0,...,29]
-            - an: antenna number [0, 1, 2]
-            - rn: receiver number [0,...,5]
-        2) 4-D array of phase shifts with the same shape.
+            - an: antenna number [0, ..., 18]
+        2) 3-D array of phase shifts with the same shape.
         3) BVP as 3-D tensor of shape [20, 20, T], where T is the timestep
         4) Information about the sample as a dictionary with keys [`user`,
            `room_num`, `date`, `torso_location`, `face_orientation`, `gesture`]
