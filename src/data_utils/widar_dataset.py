@@ -16,7 +16,7 @@ from torch.utils.data import Dataset
 class WidarDataset(Dataset):
     csi_length = 2048
 
-    def __init__(self, root_path: Path, split_name: str, is_small: bool,
+    def __init__(self, root_path: Path, split_name: str, is_small: bool = False,
                  downsample_multiplier: int = 1, return_bvp: bool = True,
                  return_csi: bool = True):
         """Torch dataset class for Widar3.0.
