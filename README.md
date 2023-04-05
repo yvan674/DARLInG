@@ -11,6 +11,33 @@ These are mostly notes to myself to understand what the data looks like.
 The files are stored in a _lot_ of files, split into multiple folders.
 Folder naming scheme doesn't have much meaning, other than to split the dataset into when the data was captured.
 
+## Gestures
+
+Not all gestures are performed by all users.
+As such, we will only use gestures 1-6 in this work.
+
+| User  | Gesture -> |     |     |     |     |     |     |     |     |    |       |
+|-------|------------|-----|-----|-----|-----|-----|-----|-----|-----|----|-------|
+|       | 1          | 2   | 3   | 4   | 5   | 6   | 7   | 8   | 9   | 10 | Total |
+| 1     | 130        | 130 | 130 | 130 | 130 | 130 | 65  | 65  | 65  | 40 | 1015  |
+| 2     | 200        | 175 | 175 | 175 | 150 | 125 | 25  | 25  | 25  | 25 | 1100  |
+| 3     | 150        | 150 | 150 | 125 | 125 | 125 |     |     |     |    | 825   |
+| 4     | 25         | 25  | 25  | 25  | 25  | 25  |     |     |     |    | 150   |
+| 5     | 50         | 50  | 50  | 50  | 50  | 50  | 25  | 25  | 25  |    | 375   |
+| 6     | 50         | 50  | 50  | 50  | 50  | 50  |     |     |     |    | 300   |
+| 7     | 25         | 25  | 25  | 25  | 25  | 25  |     |     |     |    | 150   |
+| 8     | 25         | 25  | 25  | 25  | 25  | 25  |     |     |     |    | 150   |
+| 9     | 25         | 25  | 25  | 25  | 25  | 25  |     |     |     |    | 150   |
+| 10    | 25         | 25  | 25  | 25  | 25  | 25  | 25  | 25  | 25  |    | 225   |
+| 11    | 25         | 25  | 25  | 25  | 25  | 25  | 25  | 25  | 25  |    | 225   |
+| 12    | 25         | 25  | 25  | 25  | 25  | 25  | 25  | 25  | 25  |    | 225   |
+| 13    | 25         | 25  | 25  | 25  | 25  | 25  | 25  | 25  | 25  |    | 225   |
+| 14    | 25         | 25  | 25  | 25  | 25  | 25  | 25  | 25  | 25  |    | 225   |
+| 15    | 25         | 25  | 25  | 25  | 25  | 25  | 25  | 25  | 25  |    | 225   |
+| 16    | 25         | 25  | 25  | 25  | 25  | 25  | 25  | 25  | 25  |    | 225   |
+| 17    | 25         | 25  | 25  | 25  | 25  | 25  | 25  | 25  | 25  |    | 225   |
+| Total | 880        | 855 | 855 | 830 | 805 | 780 | 315 | 315 | 315 | 65 | 6015  |
+
 ### CSI file
 
 The CSI files are `.dat` files, which are simply CSI dumps from the tool used by the team to gather CSI data.
@@ -116,6 +143,8 @@ Our approach is:
 - [x] Implement a pipeline class for all SignalProcessors
 - [x] Implement DeepInsight for our dataset.
   - DeepInsight can be simply imported
+- [ ] Explore Phase unwrap shapes
+- [ ] Implement standard scalar.
 - [ ] Implement REFINED for our dataset.
 - [ ] Implement GAF for our dataset.
 - [ ] Implement MTF for our dataset.
