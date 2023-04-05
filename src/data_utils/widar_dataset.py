@@ -170,9 +170,9 @@ class WidarDataset(Dataset):
         else:
             bvp = None
 
-        info = {data_record[k] for k in ("user", "room_num", "date",
-                                         "torso_location", "face_orientation",
-                                         "gesture")}
+        info = {k: data_record[k] for k in ("user", "room_num", "date",
+                                            "torso_location", "face_orientation",
+                                            "gesture")}
 
 
         return amp, phase, bvp, info
