@@ -151,7 +151,7 @@ Our approach is:
 - [x] Implement a pipeline class for all SignalProcessors
 - [x] Implement DeepInsight for our dataset.
   - DeepInsight can be simply imported
-- [ ] Explore Phase unwrap shapes
+- [x] Explore Phase unwrap shapes
 - [ ] Implement standard scalar.
 - [ ] Implement REFINED for our dataset.
 - [ ] Implement GAF for our dataset.
