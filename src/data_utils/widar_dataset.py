@@ -4,6 +4,7 @@ Loads both BVP and CSI information from the Widar3.0 Dataset.
 """
 import pickle
 from pathlib import Path
+from time import perf_counter
 from typing import List
 
 import csiread
@@ -14,8 +15,10 @@ from torch.utils.data import Dataset
 
 class WidarDataset(Dataset):
     csi_length = 2048
+
     def __init__(self, root_path: Path, split_name: str, is_small: bool,
-                 downsample_multiplier: int = 1):
+                 downsample_multiplier: int = 1, return_bvp: bool = True,
+                 return_csi: bool = True):
         """Torch dataset class for Widar3.0.
 
         Returned values are 4-tuples containing CSI amplitude, CSI phase,
@@ -50,18 +53,33 @@ class WidarDataset(Dataset):
         The CSI data is originally sampled at 1000 Hz.
 
         Args:
-            root_path: Root path of the data directory
+            root_path: Root path of the data directory (e.g., DARLInG/data/)
             split_name: Name of the split this dataset should be. Options are
                 [`train`, `validation`, `test_room`, `test_location`]
             is_small: True if this is the small version of the dataset.
             downsample_multiplier: If downsampling is desired, the multiplier
                 for downsampling (e.g., 2 means only keep every other sample)
+            return_bvp: Whether the BVP should be returned. If False,
+                then None is provided as the BVP value. Should make it a lot
+                faster to load samples if no BVP is necessary.
+            return_csi: Whether the CSI amplitude and phase should be returned.
+                If False, then None is provided as the amplitude and phase
+                values.
         """
+        print(f"Loading dataset {split_name}")
+        start_time = perf_counter()
         self.data_path = root_path
+        if split_name not in ("train", "validation",
+                              "test_room", "test_location"):
+            raise ValueError(f"`{split_name}` not one of allowed options for "
+                             f"parameter `split_name`")
         self.split_name = split_name
         self.is_small = is_small
         self.ts_length = self.csi_length // downsample_multiplier
         self.downsample_multiplier = downsample_multiplier
+        self.return_bvp = return_bvp
+        self.return_csi = return_csi
+
         if is_small:
             data_dir = root_path / "widar_small"
             index_fp = data_dir / f"{split_name}_index_small.pkl"
@@ -76,6 +94,8 @@ class WidarDataset(Dataset):
             self.num_repetitions = len(self.data_records[0]["csi_stems"])
         else:
             self.num_repetitions = 1
+
+        print(f"Loading complete. Took {perf_counter() - start_time:.2f} s.")
 
     def _load_csi_file(self, csi_file_path: Path) -> np.ndarray:
         """Copy-pasted from csiread examples. Reads a single CSI file.
@@ -136,15 +156,24 @@ class WidarDataset(Dataset):
             csi_index = 0
 
         data_record = self.data_records[data_records_index]
-        csi_files = [self._load_csi_file(fp)
-                     for fp in data_record[f"csi_paths_{csi_index}"]]
-        csi = self._stack_csi_arrays(csi_files)
-        amp = np.absolute(csi)
-        phase = np.angle(csi)
+        if self.return_csi:
+            csi_files = [self._load_csi_file(fp)
+                         for fp in data_record[f"csi_paths_{csi_index}"]]
+            csi = self._stack_csi_arrays(csi_files)
+            amp = np.absolute(csi)
+            phase = np.angle(csi)
+        else:
+            amp, phase = None, None
+
+        if self.return_bvp:
+            bvp = self._load_bvp_file(data_record[f"bvp_paths_{csi_index}"])
+        else:
+            bvp = None
+
         info = {data_record[k] for k in ("user", "room_num", "date",
                                          "torso_location", "face_orientation",
                                          "gesture")}
-        bvp = self._load_bvp_file(data_record[f"bvp_paths_{csi_index}"])
+
 
         return amp, phase, bvp, info
 
