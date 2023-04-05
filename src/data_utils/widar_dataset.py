@@ -88,12 +88,10 @@ class WidarDataset(Dataset):
             raise NotImplementedError("Normal sized dataset is not yet "
                                       "implemented.")
         with open(index_fp, "rb") as f:
-            self.data_records: List[dict] = pickle.load(f)
-
-        if self.is_small:
-            self.num_repetitions = len(self.data_records[0]["csi_stems"])
-        else:
-            self.num_repetitions = 1
+            index_file: dict[str, any] = pickle.load(f)
+            self.data_records: list[dict] = index_file["samples"]
+            self.total_samples = index_file["num_total_samples"]
+            self.index_to_csi_index = index_file["index_to_csi_index"]
 
         print(f"Loading complete. Took {perf_counter() - start_time:.2f} s.")
 
@@ -105,6 +103,8 @@ class WidarDataset(Dataset):
              subcarrier channel number, and an the antenna number.
          """
         if self.is_small:
+            # widar_small moves the files to a different location, so we
+            # overwrite it here.
             csi_file_path = self.data_path / csi_file_path.name
         csidata = csiread.Intel(str(csi_file_path), if_report=False)
         csidata.read()
@@ -114,6 +114,8 @@ class WidarDataset(Dataset):
     def _load_bvp_file(self, bvp_file_path: Path) -> np.ndarray:
         """Loads a BVP file taking into account if this is a small dataset."""
         if self.is_small:
+            # widar_small moves the files to a different location, so we
+            # overwrite it here.
             bvp_file_path = self.data_path / bvp_file_path.name
         return loadmat(str(bvp_file_path))["velocity_spectrum_ro"]
 
@@ -125,7 +127,7 @@ class WidarDataset(Dataset):
                f"is_small={self.is_small})"
 
     def __len__(self):
-        return len(self.data_records) * self.num_repetitions
+        return self.total_samples
 
     def _stack_csi_arrays(self, csi_arrays: List[np.ndarray]) -> np.ndarray:
         """Stacks the CSI arrays according to the stack mode specified."""
@@ -149,11 +151,7 @@ class WidarDataset(Dataset):
         Returns:
             CSI amplitude, CSI phase, BVP, y
         """
-        if self.num_repetitions > 1:
-            data_records_index, csi_index = divmod(item, self.num_repetitions)
-        else:
-            data_records_index = item
-            csi_index = 0
+        data_records_index, csi_index = self.index_to_csi_index[item]
 
         data_record = self.data_records[data_records_index]
         if self.return_csi:
@@ -170,10 +168,9 @@ class WidarDataset(Dataset):
         else:
             bvp = None
 
-        info = {k: data_record[k] for k in ("user", "room_num", "date",
-                                            "torso_location", "face_orientation",
-                                            "gesture")}
-
+        info = {k: data_record[k]
+                for k in ("user", "room_num", "date", "torso_location",
+                          "face_orientation", "gesture")}
 
         return amp, phase, bvp, info
 

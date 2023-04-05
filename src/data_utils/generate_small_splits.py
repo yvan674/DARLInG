@@ -1,6 +1,6 @@
 """Generate Small Splits.
 
-Creates a h5 file for each dataset split in the small set.
+Creates a dir for each dataset split in the small set.
 """
 from argparse import ArgumentParser
 from pathlib import Path
@@ -24,9 +24,9 @@ def copy_files(widar_dir: Path):
                    "test_location")
     for split_name in split_names:
         with open(widar_dir / f"{split_name}_index_small.pkl", "rb") as f:
-            samples = pickle.load(f)
+            samples = pickle.load(f)['samples']
 
-        split_dir = widar_dir / split_name
+        split_dir = widar_dir / "widar_small" / split_name
         split_dir.mkdir(parents=True, exist_ok=True)
 
         # Figure out num_reps
@@ -40,19 +40,6 @@ def copy_files(widar_dir: Path):
                 bvp_path_keys.append(key)
 
         for sample in tqdm(samples, desc=f"Copying files for {split_name}"):
-            # Abandoning this for now because the size of each receiver array
-            # is not consistent between receivers.
-            # csi_arrays = []
-            # for key in csi_path_keys:
-            #     csi_receivers = []
-            #     for i in range(6):
-            #         csidata = csiread.Intel(str(sample[key][i]))
-            #         csidata.read()
-            #         csi_receivers.append(
-            #             csidata.get_scaled_csi_sm()[:, :, :, :1]
-            #         )
-            #     csi_arrays.append(csi_receivers)
-            # breakpoint()
             for csi_path_key in csi_path_keys:
                 for csi_file in sample[csi_path_key]:
                     copy2(src=csi_file,
