@@ -50,24 +50,28 @@ TRAINING_SELECTION = {
     "user": {"1", "2", "4", "5"},
     "room_num": {1, 2},
     "torso_location": {"1", "2", "3", "4", "5"},
+    "gesture": {"1", "2", "3", "4", "5", "6"}
 }
 
 VALIDATION_SELECTION = {
     "user": {"10", "11", "12", "13", "14", "15", "16", "17"},
     "room_num": {1},
-    "torso_location": {"1", "2", "3", "4", "5"}
+    "torso_location": {"1", "2", "3", "4", "5"},
+    "gesture": {"1", "2", "3", "4", "5", "6"}
 }
 
 TEST_ROOM_SELECTION = {
     "user": {"3", "7", "8", "9"},
     "room_num": {3},
-    "torso_location": {"1", "2", "3", "4", "5"}
+    "torso_location": {"1", "2", "3", "4", "5"},
+    "gesture": {"1", "2", "3", "4", "5", "6"}
 }
 
 TEST_LOCATION_SELECTION = {
     "user": {"1"},
     "room_num": {1},
-    "torso_location": {"6", "7", "8"}
+    "torso_location": {"6", "7", "8"},
+    "gesture": {"1", "2", "3", "4", "5", "6"}
 }
 
 

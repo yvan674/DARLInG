@@ -116,11 +116,19 @@ Face orientation is balanced as well.
 All face orientations are done by every user in every room they participate in.
 
 Gestures are balanced for each user, i.e., user 1 does every gesture the same number of times, but gestures are not balanced overall.
+We only use gestures 1-6
 
 Our approach is:
 1. Select those room ids and user ids, and torso locations as listed above.
 2. Choose a 10% stratified random set, stratified based on room id, user id, and gesture
 3. Choose 2 random repetitions for each sample
+
+## Experimental Steps
+
+1. Generate the small dataset, if desired.
+   1. Generate an index for the small dataset using `src/data_utils/generate_dataset_index.py`.
+   2. Generate the small dataset using `src/data_utils/generate_small_splits.py`.
+2. Calculate the mean and std-dev per channel using `src/data_utils/`??
 
 ## Todo
 

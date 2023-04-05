@@ -104,13 +104,14 @@ def parse_files(widar_dir: Path, num_repetitions: int):
 
         sample_records = {}
 
+        user_str = "".join(split["user"])
+        torso_str = "".join(split["torso_location"])
+        gesture_str = "".join(split["gesture"])
+        glob_str = f"user[{user_str}]/user[{user_str}]-[{gesture_str}]" \
+                   f"-[{torso_str}]-?-*"
+
         for date_dir in tqdm(date_dirs):
-            user_str = "".join(split["user"])
-            torso_str = "".join(split["torso_location"])
-            glob_str = f"user[{user_str}]/user[{user_str}]-?-[{torso_str}]-?-*"
             matching_files = date_dir.glob(glob_str)
-
-
             for file in matching_files:
                 file_data = file.stem[4:-3].split("-")[:-1]
                 file_str = "".join(file_data)
@@ -154,7 +155,8 @@ def parse_files(widar_dir: Path, num_repetitions: int):
                     ]
                     sample_records[key][f"bvp_paths_{rep}"] = bvp_paths[rep]
 
-        warn(f"No BVP found for {len(keys_to_del)} files.")
+        if len(keys_to_del) > 0:
+            warn(f"No BVP found for {len(keys_to_del)} files.")
         for key in keys_to_del:
             del sample_records[key]
 
