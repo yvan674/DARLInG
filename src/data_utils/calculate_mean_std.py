@@ -46,4 +46,4 @@ def calculate_mean_std(data_dir: Path, out_fp: Path):
 
 
 if __name__ == "__main__":
-    calculate_mean_std(Path("../../data"), Path("../data/mean_std.csv"))
+    calculate_mean_std(Path("../../data"), Path("../../data/mean_std.csv"))
