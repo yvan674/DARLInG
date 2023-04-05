@@ -128,7 +128,8 @@ Our approach is:
 1. Generate the small dataset, if desired.
    1. Generate an index for the small dataset using `src/data_utils/generate_dataset_index.py`.
    2. Generate the small dataset using `src/data_utils/generate_small_splits.py`.
-2. Calculate the mean and std-dev per channel using `src/data_utils/`??
+2. Otherwise, generate the dataset index using `src/data_utils/generate_dataset_index.py`.
+3. Calculate the mean and standard deviation of amplitude and phase using `src/data_utils/calculate_mean_std.py`
 
 ## Todo
 
