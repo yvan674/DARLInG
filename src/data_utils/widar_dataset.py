@@ -84,8 +84,8 @@ class WidarDataset(Dataset):
             index_fp = data_dir / f"{split_name}_index_small.pkl"
             self.data_path = data_dir / split_name
         else:
-            raise NotImplementedError("Normal sized dataset is not yet "
-                                      "implemented.")
+            index_fp = self.data_path / f"{split_name}_index.pkl"
+
         with open(index_fp, "rb") as f:
             index_file: dict[str, any] = pickle.load(f)
             self.data_records: list[dict] = index_file["samples"]
