@@ -55,7 +55,7 @@ def refined_transform(data: dict, output_dir: Path, num_iters: int = 5):
         with open(output_image_fp, "wb") as file:
             pickle.dump(generated, file)
 
-
-class RefinedTransform:
-    def __init__(self, data_fp: Path):
-        self.
+#
+# class RefinedTransform:
+#     def __init__(self, data_fp: Path):
+#         self.

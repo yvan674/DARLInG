@@ -4,7 +4,6 @@ Turns the Wi-Fi RSSI Fingerprint into an image using a GAF transformation.
 """
 from pathlib import Path
 
-from sklearn.preprocessing import StandardScaler
 from pyts.image import GramianAngularField
 
 
@@ -22,13 +21,5 @@ def gaf_transform(data: dict, output_dir: Path):
     # pyts_transform(data, gaf, output_dir)
 
 
-if __name__ == '__main__':
-    from data_utils.widar_dataset import WidarDataset
-    data_path = Path("/Users/Yvan/Git/DARLInG/data/widar_small")
-    gaf = GramianAngularField()
-    scalar = StandardScaler()
-    dataset = WidarDataset(Path("/Users/Yvan/Git/DARLInG/data"), "train",
-                           True)
-    for i in dataset:
-        pass
+
 
