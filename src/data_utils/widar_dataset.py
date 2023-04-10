@@ -119,7 +119,8 @@ class WidarDataset(Dataset):
         return loadmat(str(bvp_file_path))["velocity_spectrum_ro"]
 
     def __str__(self):
-        return f"WidarDataset: {self.split_name}"
+        return f"WidarDataset: {self.split_name}" \
+               f"{' (small)' if self.is_small else ''}"
 
     def __repr__(self):
         return f"WidarDataset({self.split_name}, {self.data_path}, " \
