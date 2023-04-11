@@ -82,34 +82,34 @@ class MultiTaskHead(nn.Module):
     def __init__(self,
                  decoder_ac_func: nn.Module,
                  decoder_dropout: float,
-                 decoder_latent_dim: int,
+                 encoder_latent_dim: int,
                  predictor_ac_func: nn.Module,
                  predictor_dropout: float,
-                 in_features: int):
+                 domain_label_size: int):
         """Multi Task Prediction Head.
 
         Args:
             decoder_ac_func: Activation function for the decoder.
             decoder_dropout: Dropout rate for the decoder.
-            decoder_latent_dim: Latent dimensionality of the decoder.
+            encoder_latent_dim: Latent dimensionality of the output of the
+                encoder.
             predictor_ac_func: Activation function for the predictor.
             predictor_dropout: Dropout rate for the predictor.
-            in_features: Dimensionality of the output of the
-                encoder + domain label.
+            domain_label_size: Dimensionality of the domain label.
         """
         super().__init__()
-        self.fc0 = nn.Linear(in_features, decoder_latent_dim)
+
+        in_features = domain_label_size + encoder_latent_dim
 
         self.decoder = Decoder(decoder_ac_func,
                                decoder_dropout,
-                               decoder_latent_dim)
+                               in_features)
         self.predictor = GesturePredictor(predictor_ac_func,
                                           predictor_dropout,
                                           in_features)
 
-    def forward(self, x):
-        x0 = self.fc0(x)
-        y_bvp = self.decoder(x0)
-        y_gesture = self.predictor(x)
+    def forward(self, z):
+        y_bvp = self.decoder(z)
+        y_gesture = self.predictor(z)
 
         return y_bvp, y_gesture
