@@ -14,18 +14,27 @@ class TqdmUI(BaseUI):
                  initial_data: dict[str, any]):
         super().__init__(train_steps, valid_steps, epochs, initial_data)
         total_steps = (valid_steps + 2 * train_steps) * epochs
-        self.prog_bar = tqdm(desc="Training", total=total_steps)
+        self.current_epoch = 1
+        self.total_epochs = epochs
+        self.prog_bar = tqdm(desc=f"Epoch: 1 of {epochs} | "
+                                  f"Training loss: nan", total=total_steps)
 
     def update_data(self, data: dict[str, any]):
+        if "epoch" in data:
+            self.current_epoch = data["epoch"]
         if "train_loss" in data:
-            self.prog_bar.set_description(f"Train loss: "
+            self.prog_bar.set_description(f"Epoch: {self.current_epoch} of "
+                                          f"{self.total_epochs} | "
+                                          f"Training loss: "
                                           f"{data['train_loss']:.2f}")
         elif "valid_loss" in data:
-            self.prog_bar.set_description(f"Validation loss: "
+            self.prog_bar.set_description(f"Epoch: {self.current_epoch} of "
+                                          f"{self.total_epochs} | "
+                                          f"Validation loss: "
                                           f"{data['valid_loss']:.2f}")
         self.prog_bar.write(f"{data}")
 
-    def update_image(self, img: Image):
+    def update_image(self, ori_img: Image, null_img: Image, embed_image: Image):
         pass
 
     def update_status(self, status: str):

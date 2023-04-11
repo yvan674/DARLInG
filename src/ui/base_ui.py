@@ -38,7 +38,7 @@ class BaseUI(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def update_image(self, img: Image):
+    def update_image(self, ori_img: Image, null_img: Image, embed_image: Image):
         """Updates the image presented in the UI."""
         raise NotImplementedError
 
