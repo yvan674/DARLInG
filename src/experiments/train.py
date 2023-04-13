@@ -2,240 +2,40 @@
 
 Training function for DARLInG.
 """
-import sys
 from pathlib import Path
+
+import numpy as np
 from PIL import Image
 from time import perf_counter
 
-from tqdm import tqdm
+from matplotlib import pyplot as plt
 import torch
 import torch.nn as nn
 from torch.optim import Optimizer
 from torch.utils.data import DataLoader
+from torchmetrics.classification import Accuracy, Precision, F1Score, \
+    ConfusionMatrix
 import wandb
 from wandb.wandb_run import Run
 
 from ui.base_ui import BaseUI
-
-
-def train_old(model: nn.Module,
-          loss_fn: nn.Module,
-          optimizer: Optimizer,
-          train_loader: DataLoader,
-          valid_loader: DataLoader,
-          epochs: int,
-          logging_freq: int,
-          logging: Run,
-          device: torch.device,
-          checkpoint_path: Path,
-          ui: any = None):
-    """Training loop with included validation at the end of each epoch.
-
-    Args:
-        model: The model to be trained.
-        loss_fn: The loss function used to train the model.
-        optimizer: The optimizer used
-        train_loader: The DataLoader object containing the training d.
-        valid_loader: The DataLoader object containing the validation d.
-        epochs: The number of epochs to train for.
-        logging_freq: How often to log.
-        logging: Run from wandb to log to or the basic logger.
-        device: The device training should be done on.
-        checkpoint_path: Path to save checkpoints to.
-        ui: A Training UI, if desired.
-    """
-    model.to(device)  # In case it hasn't been sent to device yet
-    p_bar = tqdm(total=len(train_loader) * epochs)
-
-    logging.watch(model, log="all", log_freq=logging_freq, log_graph=True)
-
-    ce_metric = nn.CrossEntropyLoss()
-
-    step = -1
-    if ui:
-        start_time = perf_counter()
-    prev_ood_metric = 0.
-    for epoch in range(epochs):
-        # Training
-        model.train()
-        if ui:
-            ui.update_status(f"Running training...")
-        for batch_idx, (data, target) in enumerate(train_loader):
-            step += 1
-
-            # turn from 5d array to 4d array by flattening the first two
-            # dimensions
-            data = data.reshape(-1, 1, 32, 32)
-            target = target.reshape(-1)
-            data, target = data.to(device), target.to(device)
-
-            # Forward pass
-            reconstr_x, class_preds, mus, log_sigmas = model(data)
-            elbo_loss, class_loss, joint_loss = loss_fn(
-                data, reconstr_x, class_preds, target, mus, log_sigmas
-            )
-
-            # Backward pass
-            optimizer.zero_grad()
-            joint_loss.backward()
-            optimizer.step()
-
-            # Calculate metrics
-            log_dict = {
-                "train_loss": joint_loss.data,
-                "train_elbo_loss": elbo_loss.data,
-                "train_class_loss": class_loss.data,
-                "train_mus": wandb.Histogram(mus.mean(dim=0)
-                                             .detach()
-                                             .cpu()),
-                "train_log_sigmas": wandb.Histogram(log_sigmas.mean(dim=0)
-                                                    .detach()
-                                                    .cpu())
-            }
-            if batch_idx % 50 == 0:
-                original_imgs = tensor_to_image(data, (0, 3))
-                reconstr_imgs = tensor_to_image(reconstr_x, (0, 3))
-
-                log_dict["train_inputs"] = [wandb.Image(i)
-                                            for i in original_imgs]
-                log_dict["train_reconstructions"] = [wandb.Image(i)
-                                                     for i in reconstr_imgs]
-                if ui:
-                    ui.update_image(original_imgs[0],
-                                    reconstr_imgs[0])
-
-            # for metric_name, metric_fn in train_metrics.items():
-            #     log_dict[metric_name] = metric_fn(output, target)
-
-            # Update logging and progress bar
-            p_bar.set_description(f"Epoch: {epoch + 1} of {epochs} | "
-                                  f"Training loss: {joint_loss.data:.5f}")
-            p_bar.update(1)
-
-            logging.log(log_dict, step=step)
-            if ui:
-                current_time = perf_counter()
-                rate = 1 / (current_time - start_time)
-                start_time = current_time
-                ui.update_data(batch_idx + 1, epoch + 1, elbo_loss,
-                               class_loss, rate)
-
-        # Validation
-        model.eval()
-        if ui:
-            ui.update_status("Running validation...")
-            start_time = perf_counter()
-        original_xs = []
-        reconstr_xs = []
-        all_mus = []
-        all_log_sigmas = []
-        all_targets = []
-        all_preds = []
-
-        for batch_idx, (data, target) in enumerate(valid_loader):
-            data, target = data.to(device), target.to(device)
-
-            # Forward pass
-            reconstr_x, class_preds, mus, log_sigmas = model(data)
-
-            # Add stuff to total list
-            original_xs.append(data.detach())
-            reconstr_xs.append(reconstr_x.detach())
-            all_mus.append(mus.detach())
-            all_log_sigmas.append(log_sigmas.detach())
-            all_targets.append(target)
-            all_preds.append(class_preds)
-
-            log_dict = {
-                "valid_mus": wandb.Histogram(mus.mean(dim=0)
-                                             .detach()
-                                             .cpu()),
-                "valid_log_sigmas": wandb.Histogram(log_sigmas.mean(dim=0)
-                                                    .detach()
-                                                    .cpu())
-            }
-
-            if batch_idx % 20 == 0:
-                original_imgs = tensor_to_image(data, (0, 3))
-                reconstr_imgs = tensor_to_image(reconstr_x, (0, 3))
-
-                log_dict["valid_inputs"] = [wandb.Image(i)
-                                            for i in original_imgs]
-                log_dict["valid_reconstructions"] = [wandb.Image(i)
-                                                      for i in reconstr_imgs]
-
-            # Calculate the metrics if this is the last batch
-            if batch_idx == len(valid_loader) - 1:
-                # Concat all necessary data
-                x = torch.concat(original_xs, dim=0)
-                x_reconstr = torch.concat(reconstr_xs, dim=0)
-                mu = torch.concat(all_mus, dim=0)
-                log_sigma = torch.concat(all_log_sigmas, dim=0)
-                target = torch.concat(all_targets, dim=0)
-                class_preds = torch.concat(all_preds, dim=0)
-
-                # Calculate metrics
-                ood_metric = ood_prediction_metric(
-                    x, x_reconstr, mu, log_sigma, target
-                )
-                mask = target < 5
-                cross_entropy = ce_metric(class_preds[mask], target[mask])
-
-                log_dict["valid_ood"] = ood_metric.data
-                log_dict["valid_class_loss"] = cross_entropy.data
-
-            # Log metrics
-            logging.log(log_dict, step=step)
-
-        if ui:
-            current_time = perf_counter()
-            rate = 1 / (current_time - start_time)
-            start_time = current_time
-            ui.update_data(batch_idx + 1, epoch + 1, ood_metric,
-                           cross_entropy, rate, True)
-
-        # Save checkpoint if better than previous runs
-        if ood_metric.data > prev_ood_metric:
-            prev_checkpoint = (checkpoint_path / f"{logging.name}-"
-                                                 f"ep-{epoch - 1}.pth")
-            if prev_checkpoint.exists():
-                prev_checkpoint.unlink()
-
-            torch.save({"model_state_dict": model.state_dict(),
-                        "optimizer_state_dict": optimizer.state_dict(),
-                        "epoch": epoch,
-                        "train_metrics": None,
-                        "valid_metrics": None},
-                       checkpoint_path / f"{logging.name}-ep-{epoch}.pth")
-            prev_ood_metric = ood_metric
-        # Cleanup
-        del original_imgs
-        del reconstr_imgs
-        del all_mus
-        del all_log_sigmas
-        del all_targets
-        del all_preds
-        if ui:
-            ui.update_image(tensor_to_image(data, (0, 2))[0],
-                            tensor_to_image(reconstr_x, (0, 2))[0])
+from models.base_embedding_agent import BaseEmbeddingAgent
 
 
 def train(encoder: nn.Module,
           null_multitask_head: nn.Module,
           embed_multitask_head: nn.Module,
-          embedding_agent: any,
+          embedding_agent: BaseEmbeddingAgent,
           train_embedding_agent: bool,
           null_embedding: torch.Tensor,
           encoder_optimizer: Optimizer,
           null_multitask_optimizer: Optimizer,
           embed_multitask_optimizer: Optimizer,
           kl_loss: nn.Module,
-          null_loss: nn.Module,
-          embed_loss: nn.Module,
+          mt_loss: nn.Module,
           train_loader: DataLoader,
           valid_loader: DataLoader,
           epochs: int,
-          logging_freq: int,
           logging: Run,
           device: torch.device,
           chekckpoint_path: Path,
@@ -256,21 +56,31 @@ def train(encoder: nn.Module,
         null_multitask_optimizer: Optimizer for the null domain MT head.
         embed_multitask_optimizer: Optimizer for the non-null domain MT head.
         kl_loss: ELBO loss for the encoder.
-        null_loss: Loss function for the null MT head.
-        embed_loss: Loss function for the embed MT head.
+        mt_loss: Loss function for the MT heads.
         train_loader: The training data loader.
         valid_loader: The validation data loader.
         epochs: The number of epochs to train for.
-        logging_freq: The frequency at which to log training metrics.
         logging: The logger to use for logging.
         device: The device to use for training.
         chekckpoint_path: The path to save checkpoints to.
         ui: The UI to use to visualize training.
     """
+    # This is hard coded here since we have decided to only identify
+    # 6 gestures.
+    num_classes = 6
+
+    # We want to keep track of previous values to check whether we should save
+    # a checkpoint after validation
+    best_joint_loss = 1.0e8
+    prev_checkpoint_fp: Path = chekckpoint_path / "this-doesnt-exist.pth"
     # In case any models haven't been sent to device yet
     encoder.to(device)
     null_multitask_head.to(device)
     embed_multitask_head.to(device)
+
+    acc = Accuracy(task="multiclass", num_classes=num_classes)
+    prec = Precision(task="multiclass", num_classes=num_classes)
+    f1 = F1Score(task="multiclass", num_classes=num_classes)
 
     def forward_pass(a, phi, b):
         """Runs a single forward pass."""
@@ -290,9 +100,25 @@ def train(encoder: nn.Module,
         b_embed, y_pred_embed = embed_multitask_head(
             torch.cat([z_pred, domain_embedding], dim=1)
         )
-        return z_pred, mu_pred, log_sigma_pred, b_null, y_pred_null, b_embed, \
+        return z, mu_pred, log_sigma_pred, b_null, y_pred_null, b_embed, \
             y_pred_embed
 
+    def calculate_losses(bvp_gt, gesture_gt, mu_pred, log_sigma_pred,
+                         bvp_null_pred, gesture_null_pred,
+                         bvp_embed_pred, gesture_embed_pred,
+                         reconstr_loss_only, no_kl_loss):
+        if not no_kl_loss:
+            kl_loss_val = kl_loss(mu_pred, log_sigma_pred)
+        else:
+            kl_loss_val = None
+        null_loss_val = mt_loss(bvp_gt, gesture_gt, bvp_null_pred,
+                                gesture_null_pred,
+                                reconstr_loss_only)
+        embed_loss_val = mt_loss(bvp_gt, gesture_gt, bvp_embed_pred,
+                                 gesture_embed_pred,
+                                 reconstr_loss_only)
+
+        return kl_loss_val, null_loss_val, embed_loss_val
 
     step = -1
 
@@ -300,22 +126,23 @@ def train(encoder: nn.Module,
         encoder.train()
         null_multitask_head.train()
         embed_multitask_head.train()
-        embedding_agent.train()
+        embedding_agent.eval()
 
+        # SECTION: Train the VAE classifier
         for batch_idx, (amp, phase, bvp, info) in enumerate(train_loader):
             step += 1
+
             start_time = perf_counter()
             gesture = info["gesture"].to(device)
 
-            z, mu, log_sigma, bvp_null, gesture_null, bvp_embed, \
-            gesture_embed = forward_pass(amp, phase, bvp)
+            _, mu, log_sigma, bvp_null, gesture_null, bvp_embed, \
+                gesture_embed = forward_pass(amp, phase, bvp)
 
             # Calculate losses
-            kl_loss_value = kl_loss(mu, log_sigma)
-            null_loss_value = null_loss(bvp, gesture, bvp_null,
-                                        gesture_null)
-            embed_loss_value = embed_loss(bvp, gesture, bvp_embed,
-                                          gesture_embed)
+            kl_loss_value, null_loss_value, embed_loss_value = calculate_losses(
+                bvp, gesture, mu, log_sigma, bvp_null, gesture_null,
+                bvp_embed, gesture_embed, False, False
+            )
 
             # Backward pass
             encoder_optimizer.zero_grad()
@@ -340,7 +167,9 @@ def train(encoder: nn.Module,
                 "train_kl_loss": kl_loss_value,
                 "train_null_loss": null_loss_value,
                 "train_embed_loss": embed_loss_value,
-                "train_mus": wandb.Histogram(mu.mean(dim=0).detach().cpu()),
+                "train_mus": wandb.Histogram(mu.mean(dim=0)
+                                             .detach()
+                                             .cpu()),
                 "train_log_sigmas": wandb.Histogram(log_sigma.mean(dim=0)
                                                     .detach()
                                                     .cpu())
@@ -348,20 +177,12 @@ def train(encoder: nn.Module,
 
             # Add images every 50 batches.
             if batch_idx % 50 == 0:
-                original_imgs = tensor_to_image(bvp, (0, 3))
-                null_reconstr_imgs = tensor_to_image(bvp_null, (0, 3))
-                embed_reconstr_imgs = tensor_to_image(bvp_embed, (0, 3))
-
-                log_dict["train_bvp"] = [wandb.Image(i)
-                                         for i in original_imgs]
-                log_dict["train_bvp_null"] = [wandb.Image(i)
-                                              for i in null_reconstr_imgs]
-                log_dict["train_bvp_embed"] = [wandb.Image(i)
-                                               for i in embed_reconstr_imgs]
-
-                ui.update_image(original_imgs[0],
-                                null_reconstr_imgs[0],
-                                embed_reconstr_imgs[0])
+                visualize_and_store_images(bvp,
+                                           bvp_null,
+                                           bvp_embed,
+                                           log_dict,
+                                           "train",
+                                           ui)
 
             current_time = perf_counter()
             rate = 1 / (current_time - start_time)
@@ -374,13 +195,16 @@ def train(encoder: nn.Module,
                             "epoch": epoch,
                             "batch": batch_idx,
                             "rate": rate})
+            logging.log(log_dict, step)
             ui.step(1)
 
-        # Freeze the models
+        # SECTION: Freeze the models, unfreeze the embedding agent
         encoder.eval()
         null_multitask_head.eval()
         embed_multitask_head.eval()
-        # Agent training
+        embedding_agent.train()
+
+        # Train the embedding agent
         if train_embedding_agent:
             ui.update_status("Training embedding agent...")
             for batch_idx, (amp, phase, bvp, info) in enumerate(train_loader):
@@ -390,11 +214,131 @@ def train(encoder: nn.Module,
                 z, mu, log_sigma, bvp_null, gesture_null, bvp_embed, \
                     gesture_embed = forward_pass(amp, phase, bvp)
 
-                # TODO do training of agent
+                _, null_loss_value, embed_loss_value = calculate_losses(
+                    bvp, gesture, mu, log_sigma, bvp_null, gesture_null,
+                    bvp_embed, gesture_embed, False, True
+                )
+                reward = embed_loss_value.data - null_loss_value.data
 
-        # Validation
+                embedding_agent.process_reward(z, reward)
+
+
+        # Freeze everything for validation
+        embedding_agent.eval()
+
+        # SECTION: Perform Validation
+        kl_losses = []
+        joint_losses = []
+        bvp_null_losses = []
+        bvp_embed_losses = []
+        gesture_gts = []
+        gesture_null_preds = []
+        gesture_embed_preds = []
+        bvp = None
+        bvp_null = None
+        bvp_embed = None
+
         ui.update_status("Running validation...")
-        # TODO
+        for batch_idx, (amp, phase, bvp, info) in enumerate(valid_loader):
+            start_time = perf_counter()
+            gesture = info["gesture"].to(device)
+
+            _, mu, log_sigma, bvp_null, gesture_null, bvp_embed, \
+                gesture_embed = forward_pass(amp, phase, bvp)
+
+            # Calculate losses
+            kl_loss_value, null_loss_value, embed_loss_value = calculate_losses(
+                bvp, gesture,
+                mu, log_sigma,
+                bvp_null, gesture_null,
+                bvp_embed, gesture_embed,
+                reconstr_loss_only=True,
+                no_kl_loss=False
+            )
+            # Extract data only from the losses
+            kl_loss_value, null_loss_value, embed_loss_value = [
+                i.data
+                for i in (kl_loss_value, null_loss_value, embed_loss_value)
+            ]
+            joint_loss_value = (kl_loss_value
+                                + null_loss_value
+                                + embed_loss_value)
+
+            # Add stuff to lists
+            kl_losses.append(kl_loss_value)
+            joint_losses.append(joint_loss_value)
+            bvp_null_losses.append(null_loss_value)
+            bvp_embed_losses.append(embed_loss_value)
+            gesture_gts.append(gesture.detach())
+            gesture_null_preds.append(gesture_null)
+            gesture_embed_preds.append(gesture_embed)
+
+            current_time = perf_counter()
+            rate = 1 / (current_time - start_time)
+            ui.update_data({"valid_loss": joint_loss_value,
+                            "loss_diff": embed_loss_value - null_loss_value,
+                            "epoch": epoch,
+                            "batch": batch_idx,
+                            "rate": rate})
+
+
+        gesture_gts = torch.tensor(gesture_gts)
+        gesture_null_preds = torch.tensor(gesture_null_preds)
+        gesture_embed_preds = torch.tensor(gesture_embed_preds)
+
+        # Calculate metrics over entire validation set
+        joint_losses = np.mean(np.array(joint_losses))
+        log_dict = {
+            "valid_kl_loss": np.mean(np.array(kl_losses)),
+            "valid_joint_loss": joint_losses,
+            "valid_bvp_null_loss": np.mean(np.array(bvp_null_losses)),
+            "valid_bvp_embed_loss": np.mean(np.array(bvp_embed_losses)),
+            "valid_null_acc": acc(gesture_gts, gesture_null_preds),
+            "valid_null_prec": prec(gesture_gts, gesture_null_preds),
+            "valid_null_f1": f1(gesture_gts, gesture_null_preds),
+            "valid_null_conf_mat": conf_matrix(gesture_gts, gesture_null_preds,
+                                               num_classes),
+            "valid_embed_acc": acc(gesture_gts, gesture_embed_preds),
+            "valid_embed_prec": prec(gesture_gts, gesture_embed_preds),
+            "valid_embed_f1": f1(gesture_gts, gesture_embed_preds),
+            "valid_embed_conf_mat": conf_matrix(gesture_gts,
+                                                gesture_embed_preds,
+                                                num_classes)
+        }
+
+        visualize_and_store_images(bvp, bvp_null, bvp_embed, log_dict,
+                                   "valid", ui)
+
+        logging.log(log_dict, step=step)
+
+        if joint_losses < best_joint_loss:
+            checkpoint_fp = (chekckpoint_path
+                             / f"{logging.name}-ep-{epoch}.pth")
+            if prev_checkpoint_fp.exists():
+                prev_checkpoint_fp.unlink()
+
+            torch.save(
+                {"encoder_state_dict": encoder.state_dict(),
+                 "null_mt_head_state_dict": null_multitask_head.state_dict(),
+                 "embed_mt_head_state_dict": embed_multitask_head.state_dict(),
+                 "embed_agent_state_dict": embedding_agent.state_dict()},
+                checkpoint_fp
+            )
+
+            best_joint_loss = joint_losses
+            prev_checkpoint_fp = checkpoint_fp
+
+        # Cleanup
+        del kl_losses
+        del joint_losses
+        del bvp_null_losses
+        del bvp_embed_losses
+        del gesture_gts
+        del gesture_null_preds
+        del gesture_embed_preds
+        del bvp
+        del bvp_null
+        del bvp_embed
 
 
 def tensor_to_image(data: torch.Tensor, img_idxs: tuple) -> list:
@@ -407,10 +351,10 @@ def tensor_to_image(data: torch.Tensor, img_idxs: tuple) -> list:
     Returns:
         An image in mode "grayscale".
     """
-    img_array = data[img_idxs[0]:img_idxs[1]]\
-        .detach()\
-        .cpu()\
-        .numpy()\
+    img_array = data[img_idxs[0]:img_idxs[1]] \
+        .detach() \
+        .cpu() \
+        .numpy() \
         .reshape([-1, 32, 32])
     img_array = (img_array * 255).astype('uint8')
     img_arrays = [Image.fromarray(img) for img in img_array]
@@ -418,3 +362,43 @@ def tensor_to_image(data: torch.Tensor, img_idxs: tuple) -> list:
     return img_arrays
 
 
+def visualize_and_store_images(bvp: torch.Tensor,
+                               bvp_null: torch.Tensor,
+                               bvp_embed: torch.Tensor,
+                               log_dict: dict[str, any],
+                               log_prefix: str,
+                               ui: BaseUI):
+    """Reused in training and validation code.
+
+    Args:
+        bvp: Ground truth BVP tensor.
+        bvp_null: BVP predicted by null MT head.
+        bvp_embed: BVP predicted by embed MT head.
+        log_dict: The log dictionary currently being used
+        log_prefix: Entry prefix to add in the log dict. Usually `train` or
+            `valid`.
+        ui: The UI object currently being used.
+    """
+    original_imgs = tensor_to_image(bvp, (0, 3))
+    null_reconstr_imgs = tensor_to_image(bvp_null, (0, 3))
+    embed_reconstr_imgs = tensor_to_image(bvp_embed, (0, 3))
+
+    log_dict[f"{log_prefix}_bvp"] = [wandb.Image(i)
+                                     for i in original_imgs]
+    log_dict[f"{log_prefix}_bvp_null"] = [wandb.Image(i)
+                                          for i in null_reconstr_imgs]
+    log_dict[f"{log_prefix}_bvp_embed"] = [wandb.Image(i)
+                                           for i in embed_reconstr_imgs]
+
+    ui.update_image(original_imgs[0],
+                    null_reconstr_imgs[0],
+                    embed_reconstr_imgs[0])
+
+
+def conf_matrix(gesture_gt, gesture_pred, num_classes):
+    """Generates a conf-matrix plot"""
+    conf_mat = ConfusionMatrix(task="multiclass", num_classes=num_classes)
+    fig, ax = plt.subplot()
+    ax.matshow(conf_mat(gesture_gt, gesture_pred))
+
+    return fig
