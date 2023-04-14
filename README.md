@@ -160,6 +160,6 @@ Our approach is:
 - [x] Implement MTF for our dataset.
 - [x] Implement SignalPreprocessing module
 - [ ] Implement BVP dummy SignalPreprocessing module
-- [ ] Implement null agent
+- [x] Implement null agent
 - [ ] Implement known-domain agent
 - [ ] Implement experimentation framework for signal processing ablation study.
