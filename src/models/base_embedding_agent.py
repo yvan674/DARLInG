@@ -48,3 +48,8 @@ class BaseEmbeddingAgent(ABC):
     def load_state_dict(self, sd: dict[any]):
         """Loads a model's state from the provided state dictionary."""
         raise NotImplementedError
+
+    @abstractmethod
+    def to(self, device: int | torch.device | None):
+        """Moves the model to the appropriate device."""
+        raise NotImplementedError
