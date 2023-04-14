@@ -12,7 +12,7 @@ These are mostly notes to myself to understand what the data looks like.
 The files are stored in a _lot_ of files, split into multiple folders.
 Folder naming scheme doesn't have much meaning, other than to split the dataset into when the data was captured.
 
-## Gestures
+### Gestures
 
 Not all gestures are performed by all users.
 As such, we will only use gestures 1-6 in this work.
@@ -89,7 +89,7 @@ We use Scipy to read the `.mat` files with `scipy.io.loadmat()`.
 
 The directory `20181130-VS` contains no `6-link` subdirectory.
 
-## In vs Out of Domain
+### In vs Out of Domain
 
 As we are testing in vs out of domain performance, we will use the following 
 data split for train, validation, and test.
@@ -106,7 +106,7 @@ We split it this way to make sure that the test set is truly unseen while the va
 We only use gestures 1-6, since these are the gestures which have samples from all participants.
 
 
-## Small Dataset
+### Small Dataset
 
 We create a small version of the  dataset containing 2 repetitions of each action and only 10% of all available data.
 
