@@ -154,13 +154,11 @@ Our approach is:
   - DeepInsight can be simply imported
 - [x] Explore Phase unwrap shapes
 - [x] Calculate mean and std of the dataset.
-- [ ] Implement standard scalar.
-- [ ] Implement REFINED for our dataset.
-- [ ] Implement GAF for our dataset.
-- [ ] Implement MTF for our dataset.
-- [ ] Implement FGAF for our dataset.
-- [ ] Implement FMTF for our dataset.
-- [ ] Implement SignalPreprocessing module
+- [x] Implement standard scalar.
+- [x] Implement Recurrent Plots for our dataset.
+- [x] Implement GAF for our dataset.
+- [x] Implement MTF for our dataset.
+- [x] Implement SignalPreprocessing module
 - [ ] Implement BVP dummy SignalPreprocessing module
 - [ ] Implement null agent
 - [ ] Implement known-domain agent
