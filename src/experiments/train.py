@@ -20,6 +20,7 @@ from wandb.wandb_run import Run
 
 from ui.base_ui import BaseUI
 from models.base_embedding_agent import BaseEmbeddingAgent
+from loss.triple_loss import TripleLoss
 
 
 class Training:
@@ -32,8 +33,7 @@ class Training:
                  encoder_optimizer: Optimizer,
                  null_head_optimizer: Optimizer,
                  embed_head_optimizer: Optimizer,
-                 kl_loss: callable,
-                 mt_loss: callable,
+                 loss_func: TripleLoss,
                  logging: Run,
                  checkpoint_dir: Path,
                  ui: BaseUI,
@@ -51,8 +51,7 @@ class Training:
                 encoder_optimizer: Optimizer for the CNN encoder.
                 null_head_optimizer: Optimizer for the null domain MT head.
                 embed_head_optimizer: Optimizer for the non-null domain MT head.
-                kl_loss: ELBO loss for the encoder.
-                mt_loss: Loss function for the MT heads.
+                loss_func: The ELBO classification loss object.
                 logging: The logger to use for logging.
                 checkpoint_dir: The directory to save checkpoints to.
                 ui: The UI to use to visualize training.
@@ -65,8 +64,7 @@ class Training:
         self.encoder_optimizer = encoder_optimizer
         self.null_head_optimizer = null_head_optimizer
         self.embed_head_optimizer = embed_head_optimizer
-        self.kl_loss = kl_loss
-        self.mt_loss = mt_loss
+        self.loss_func = loss_func
         self.logging = logging
         self.checkpoint_dir = checkpoint_dir
         self.ui = ui
@@ -119,7 +117,7 @@ class Training:
         )
 
         # Calculate losses
-        kl_loss, null_loss, embed_loss = self._calculate_losses(
+        kl_loss, null_loss, embed_loss = self.loss_func(
             bvp, gesture, mu, log_sigma,
             bvp_null, gesture_null, bvp_embed, gesture_embed,
             reconstruction_loss_only, no_kl_loss
@@ -135,30 +133,6 @@ class Training:
                 "kl_loss": kl_loss,
                 "null_loss": null_loss,
                 "embed_loss": embed_loss}
-
-    def _calculate_losses(
-            self,
-            bvp: torch.Tensor, gesture: torch.Tensor,
-            mu: torch.Tensor, log_sigma: torch.Tensor,
-            bvp_null: torch.Tensor, gesture_null: torch.Tensor,
-            bvp_embed: torch.Tensor, gesture_embed: torch.Tensor,
-            reconstruction_loss_only: bool,
-            no_kl_loss: bool
-    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
-        """Calculates the losses required for training."""
-        if not no_kl_loss:
-            kl_loss = self.kl_loss(mu, log_sigma)
-        else:
-            kl_loss = None
-
-        null_loss = self.mt_loss(bvp, gesture,
-                                 bvp_null, gesture_null,
-                                 reconstruction_loss_only)
-        embed_loss = self.mt_loss(bvp, gesture,
-                                  bvp_embed, gesture_embed,
-                                  reconstruction_loss_only)
-
-        return kl_loss, null_loss, embed_loss
 
     def _train_vae(self, train_loader: DataLoader, device: torch.device,
                    epoch: int):
