@@ -2,24 +2,25 @@
 
 Turns the Wi-Fi RSSI Fingerprint into an image using a GAF transformation.
 """
-from pathlib import Path
-
+import numpy as np
 from pyts.image import GramianAngularField
 
-
-def gaf_transform(data: dict, output_dir: Path):
-    """Performs the transformation to a GAF.
-
-    The pyts package is used since it has a (presumably) optimized version of
-    this transformation ready to use.
-
-    Args:
-        data: The data dict produced by the data ingest functions.
-        output_dir: Where to save the generated images.
-    """
-    gaf = GramianAngularField()
-    # pyts_transform(data, gaf, output_dir)
+from signal_to_image.base import SignalToImageTransformer
 
 
+class GAF(SignalToImageTransformer):
+    def __init__(self,
+                 image_size: int | float = 1.,
+                 sample_range: tuple | None = (-1, 1),
+                 method: str = "summation",
+                 overlapping: bool = False,
+                 flatten: bool = False):
+        super().__init__()
+        self.gaf = GramianAngularField(image_size=image_size,
+                                       sample_range=sample_range,
+                                       method=method,
+                                       overlapping=overlapping,
+                                       flatten=flatten)
 
-
+    def transform(self, x: np.ndarray, **kwargs) -> np.ndarray:
+        return self.gaf.transform(x)

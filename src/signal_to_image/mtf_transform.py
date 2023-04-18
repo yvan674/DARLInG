@@ -2,21 +2,22 @@
 Turns the Wi-Fi RSSI Fingerprint into an image using a Markov Transition Field
 transformation.
 """
-from pathlib import Path
-
+import numpy as np
 from pyts.image import MarkovTransitionField
-from signal_to_image.pyts_transform import pyts_transform
+
+from signal_to_image.base import SignalToImageTransformer
 
 
-def mtf_transform(data: dict, output_dir: Path):
-    """Performs the transformation to an MTF.
-    Args:
-        data: The data dict produced by the data ingest functions.
-        output_dir: Where to save the generated images.
-    """
-    mtf = MarkovTransitionField()
-    pyts_transform(data, mtf, output_dir)
+class MTF(SignalToImageTransformer):
+    def __init__(self,
+                 image_size: int | float = 1.,
+                 n_bins: int = 5,
+                 strategy: str = "quantile",
+                 overlapping: bool = False,
+                 flatten: bool = False):
+        super().__init__()
+        self.mtf = MarkovTransitionField(image_size, n_bins, strategy,
+                                         overlapping, flatten)
 
-
-if __name__ == '__main__':
-    pass
+    def transform(self, x: np.ndarray, **kwargs) -> np.ndarray:
+        return self.mtf.transform(x)

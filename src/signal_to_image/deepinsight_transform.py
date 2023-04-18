@@ -17,8 +17,18 @@ import numpy as np
 import pickle
 from pathlib import Path
 from PIL import Image
-
 from pyDeepInsight import ImageTransformer, Norm2Scaler
+
+from signal_to_image.base import SignalToImageTransformer
+
+
+class DeepInsight(SignalToImageTransformer):
+    def __init__(self):
+        super().__init__()
+        raise NotImplementedError
+
+    def transform(self, x: np.ndarray, **kwargs) -> np.ndarray:
+        raise NotImplementedError
 
 
 def deepinsight_transform(data: dict, output_dir: Path):
