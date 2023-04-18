@@ -11,10 +11,13 @@ from typing import List
 import numpy as np
 
 from signal_processing.base import SignalProcessor
+from signal_to_image.base import SignalToImageTransformer
 
 
 class Pipeline(SignalProcessor):
-    def __init__(self, processors: List[SignalProcessor]):
+    def __init__(self, processors: List[SignalProcessor
+                                        | SignalToImageTransformer
+                                        | callable]):
         """Initializes the pipeline.
 
         Args:

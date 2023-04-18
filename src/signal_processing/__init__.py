@@ -1,6 +1,3 @@
-from signal_processing.lowpass_filter import LowPassFilter
-from signal_processing.phase_unwrap import PhaseUnwrap
-
 import matplotlib.pyplot as plt
 
 
@@ -40,4 +37,4 @@ def plot_many_signals(time_steps, signals, labels, colors=None, title=None,
     plt.show()
 
 
-__all__ = ["LowPassFilter", "PhaseUnwrap", "plot_signals", "plot_many_signals"]
+__all__ = ["plot_signals", "plot_many_signals"]
