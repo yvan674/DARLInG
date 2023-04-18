@@ -12,13 +12,17 @@ import numpy as np
 from scipy.io import loadmat
 from torch.utils.data import Dataset
 
+from signal_processing.pipeline import Pipeline
+
 
 class WidarDataset(Dataset):
     csi_length = 2048
 
     def __init__(self, root_path: Path, split_name: str, is_small: bool = False,
                  downsample_multiplier: int = 1, return_bvp: bool = True,
-                 return_csi: bool = True):
+                 return_csi: bool = True,
+                 amp_pipeline: Pipeline = Pipeline([]),
+                 phase_pipeline: Pipeline = Pipeline([])):
         """Torch dataset class for Widar3.0.
 
         Returned values are 4-tuples containing CSI amplitude, CSI phase,
@@ -64,6 +68,8 @@ class WidarDataset(Dataset):
             return_csi: Whether the CSI amplitude and phase should be returned.
                 If False, then None is provided as the amplitude and phase
                 values.
+            amp_pipeline: Pipeline to transform the amplitude shift signal with.
+            phase_pipeline: Pipeline to transform the phase shift signal with.
         """
         print(f"Loading dataset {split_name}")
         start_time = perf_counter()
@@ -78,6 +84,9 @@ class WidarDataset(Dataset):
         self.downsample_multiplier = downsample_multiplier
         self.return_bvp = return_bvp
         self.return_csi = return_csi
+
+        self.amp_pipeline = amp_pipeline
+        self.phase_pipeline = phase_pipeline
 
         if is_small:
             data_dir = root_path / "widar_small"
@@ -171,6 +180,9 @@ class WidarDataset(Dataset):
         info = {k: data_record[k]
                 for k in ("user", "room_num", "date", "torso_location",
                           "face_orientation", "gesture")}
+
+        amp = self.amp_pipeline(amp)
+        phase = self.phase_pipeline(phase)
 
         return amp, phase, bvp, info
 
