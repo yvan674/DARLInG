@@ -202,8 +202,9 @@ class WidarDataset(Dataset):
                 for k in ("user", "room_num", "date", "torso_location",
                           "face_orientation", "gesture")}
 
-        amp = self.amp_pipeline(amp)
-        phase = self.phase_pipeline(phase)
+        if self.return_csi:
+            amp = self.amp_pipeline(amp)
+            phase = self.phase_pipeline(phase)
 
         return amp, phase, bvp, info
 
