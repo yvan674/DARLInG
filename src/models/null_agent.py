@@ -11,14 +11,14 @@ from models.base_embedding_agent import BaseEmbeddingAgent
 
 
 class NullAgent(BaseEmbeddingAgent):
-    def __init__(self, embedding_shape: tuple, null_value: float):
+    def __init__(self, embedding_length: int, null_value: float):
         super().__init__()
         self.device = None
-        self.size = embedding_shape
+        self.embedding_length = embedding_length
         self.null_value = null_value
 
     def _produce_action(self, observation: torch.Tensor,
-                        info: None | dict[any]) -> torch.Tensor:
+                        info: list[dict[str, any]]) -> torch.Tensor:
         return torch.full(self.size, fill_value=self.null_value,
                           device=self.device)
 
