@@ -30,7 +30,7 @@ class Training:
                  null_head: nn.Module,
                  embed_head: nn.Module,
                  embedding_agent: BaseEmbeddingAgent,
-                 null_embedding: torch.Tensor,
+                 null_agent: BaseEmbeddingAgent,
                  encoder_optimizer: Optimizer,
                  null_head_optimizer: Optimizer,
                  embed_head_optimizer: Optimizer,
@@ -50,7 +50,7 @@ class Training:
             embed_head: The MT head which recieves some non-null domain
                 embedding.
             embedding_agent: The agent which performs the domain embedding.
-            null_embedding: The value to use for the null embedding.
+            null_agent: The agent providing the null embedding.
             encoder_optimizer: Optimizer for the CNN encoder.
             null_head_optimizer: Optimizer for the null domain MT head.
             embed_head_optimizer: Optimizer for the non-null domain MT head.
@@ -64,7 +64,7 @@ class Training:
         self.null_head = null_head
         self.embed_head = embed_head
         self.embedding_agent = embedding_agent
-        self.null_embedding = null_embedding
+        self.null_agent = null_agent
         self.encoder_optimizer = encoder_optimizer
         self.null_head_optimizer = null_head_optimizer
         self.embed_head_optimizer = embed_head_optimizer
@@ -93,6 +93,7 @@ class Training:
                       phase: torch.Tensor | None,
                       bvp: torch.Tensor,
                       gesture: torch.Tensor,
+                      info: list[dict[str, any]],
                       device: torch.device,
                       reconstruction_loss_only: bool,
                       no_kl_loss: bool):
@@ -113,7 +114,8 @@ class Training:
         z, mu, log_sigma = self.encoder(amp, phase, bvp)
 
         # Generate domain embeddings
-        domain_embedding = self.embedding_agent(z)
+        domain_embedding = self.embedding_agent(z, info)
+        null_embedding = self.null_agent(z, info)
         batch_null_embedding = torch.cat(len(amp) * [self.null_embedding])
 
         # Run the heads
@@ -150,7 +152,7 @@ class Training:
             self.step += 1
             start_time = perf_counter()
             pass_result = self._forward_pass(amp, phase, bvp, info["gesture"],
-                                             device,
+                                             info, device,
                                              reconstruction_loss_only=False,
                                              no_kl_loss=False)
 
@@ -222,7 +224,7 @@ class Training:
             start_time = perf_counter()
 
             pass_result = self._forward_pass(amp, phase, bvp, info["gesture"],
-                                             device,
+                                             info, device,
                                              reconstruction_loss_only=False,
                                              no_kl_loss=True)
             loss_diff = (pass_result["embed_loss"].data
@@ -258,7 +260,9 @@ class Training:
         for batch_idx, (amp, phase, bvp, info) in enumerate(valid_loader):
             start_time = perf_counter()
             pass_result = self._forward_pass(amp, phase, bvp, info["gesture"],
-                                             device, True, False)
+                                             info, device,
+                                             reconstruction_loss_only=True,
+                                             no_kl_loss=False)
 
             # Extract data only from the losses
             kl_loss_value, null_loss_value, embed_loss_value = [
