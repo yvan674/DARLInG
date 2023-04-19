@@ -9,7 +9,9 @@ from typing import List
 
 import csiread
 import numpy as np
+import torch
 from scipy.io import loadmat
+from scipy.io.matlab import MatReadError
 from torch.utils.data import Dataset
 
 from signal_processing.pipeline import Pipeline
@@ -21,8 +23,8 @@ class WidarDataset(Dataset):
     def __init__(self, root_path: Path, split_name: str, is_small: bool = False,
                  downsample_multiplier: int = 1, return_bvp: bool = True,
                  return_csi: bool = True,
-                 amp_pipeline: Pipeline = Pipeline([]),
-                 phase_pipeline: Pipeline = Pipeline([])):
+                 amp_pipeline: Pipeline = Pipeline([torch.from_numpy]),
+                 phase_pipeline: Pipeline = Pipeline([torch.from_numpy])):
         """Torch dataset class for Widar3.0.
 
         Returned values are 4-tuples containing CSI amplitude, CSI phase,
@@ -54,6 +56,8 @@ class WidarDataset(Dataset):
         length.
 
         The CSI data is originally sampled at 1000 Hz.
+
+        All values are returned as torch tensors.
 
         Args:
             root_path: Root path of the data directory (e.g., DARLInG/data/)
@@ -120,12 +124,28 @@ class WidarDataset(Dataset):
         return csi
 
     def _load_bvp_file(self, bvp_file_path: Path) -> np.ndarray:
-        """Loads a BVP file taking into account if this is a small dataset."""
+        """Loads a BVP file taking into account if this is a small dataset.
+
+        Empirical exploration has shown that the longest BVP has a length of
+        28.
+
+        Returns:
+            The zero-padded BVP array.
+        """
+        bvp_padded = np.zeros((20, 20, 28))
         if self.is_small:
             # widar_small moves the files to a different location, so we
             # overwrite it here.
             bvp_file_path = self.data_path / bvp_file_path.name
-        return loadmat(str(bvp_file_path))["velocity_spectrum_ro"]
+
+        try:
+            # Some BVPs are empty mat files or have a length of 0.
+            bvp = loadmat(str(bvp_file_path))["velocity_spectrum_ro"]
+            bvp_padded[:, :, :bvp.shape[2]] = bvp
+        except MatReadError:
+            pass
+
+        return bvp_padded
 
     def __str__(self):
         return f"WidarDataset: {self.split_name}" \
@@ -174,6 +194,7 @@ class WidarDataset(Dataset):
 
         if self.return_bvp:
             bvp = self._load_bvp_file(data_record[f"bvp_paths_{csi_index}"])
+            bvp = torch.from_numpy(bvp)
         else:
             bvp = None
 
