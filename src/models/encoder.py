@@ -15,13 +15,14 @@ class Encoder(nn.Module):
                  conv_ac_func: nn.Module = nn.ReLU,
                  dropout: float = 0.3,
                  latent_dim: int = 10,
-                 amp_phase_input: bool = True):
+                 bvp_pipeline: bool = False):
         """Encoder model for our network.
 
         This is an encoder which can accept either amplitude and phase as its
         input or just the BVP as its input. The number of convnet blocks (note
-        not conv blocks) in the network is 2 if amp_phase_input is True,
-        otherwise only the one is used for the BVP encoding.
+        not conv blocks) in the network is 2 if bvp_pipeline is False, one each
+        for amp and phase. Otherwise, only one is used for the precalculated
+        BVP encoding.
         """
         super(Encoder, self).__init__()
 
@@ -34,7 +35,16 @@ class Encoder(nn.Module):
                 nn.Dropout(dropout)
             )
 
-        if amp_phase_input:
+        if bvp_pipeline:
+            self.convnets = [
+                nn.Sequential(
+                    conv_block(1, 128),
+                    conv_block(128, 256),
+                    conv_block(256, 512),
+                    nn.Flatten()
+                )
+            ]
+        else:
             self.convnets = [
                 nn.Sequential(
                     conv_block(18, 128),
@@ -49,17 +59,9 @@ class Encoder(nn.Module):
                     nn.Flatten()
                 )
             ]
-        else:
-            self.convnets = [
-                nn.Sequential(
-                    conv_block(1, 128),
-                    conv_block(128, 256),
-                    conv_block(256, 512),
-                    nn.Flatten()
-                )
-            ]
 
-        self.amp_phase_input = amp_phase_input
+
+        self.bvp_pipeline = bvp_pipeline
         self.fc_mu_amp = nn.Linear(8192, latent_dim)
         self.fc_sigma_amp = nn.Linear(8192, latent_dim)
 
@@ -72,12 +74,13 @@ class Encoder(nn.Module):
         We include the bvp parameter in this method, since we also use this
         encoder to encode the BVP data.
         """
-        if self.amp_phase_input:
+        if self.bvp_pipeline:
+            h = self.convnets[0](bvp)
+        else:
             h_amp = self.convnets[0](amp)
             h_phase = self.convnets[1](phase)
             h = torch.cat([h_amp, h_phase], dim=1)
-        else:
-            h = self.convnets[0](bvp)
+
 
         mu = self.fc_mu(h)
         log_sigma = self.fc_sigma(h)

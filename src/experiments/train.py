@@ -25,6 +25,7 @@ from loss.triple_loss import TripleLoss
 
 class Training:
     def __init__(self,
+                 bvp_pipeline: bool,
                  encoder: nn.Module,
                  null_head: nn.Module,
                  embed_head: nn.Module,
@@ -40,22 +41,25 @@ class Training:
                  num_classes: int = 6):
         """Performs training on DARLInG.
 
-            Args:
-                encoder: The CNN encoder which encodes the imaged time series
-                    data.
-                null_head: The MT head which receives the null domain embedding.
-                embed_head: The MT head which recieves some non-null domain
-                    embedding.
-                embedding_agent: The agent which performs the domain embedding.
-                null_embedding: The value to use for the null embedding.
-                encoder_optimizer: Optimizer for the CNN encoder.
-                null_head_optimizer: Optimizer for the null domain MT head.
-                embed_head_optimizer: Optimizer for the non-null domain MT head.
-                loss_func: The ELBO classification loss object.
-                logging: The logger to use for logging.
-                checkpoint_dir: The directory to save checkpoints to.
-                ui: The UI to use to visualize training.
-            """
+        Args:
+            bvp_pipeline: Whether the signal preprocessing part should be
+                replaced with the precalculated BVPs.
+            encoder: The CNN encoder which encodes the imaged time series
+                data.
+            null_head: The MT head which receives the null domain embedding.
+            embed_head: The MT head which recieves some non-null domain
+                embedding.
+            embedding_agent: The agent which performs the domain embedding.
+            null_embedding: The value to use for the null embedding.
+            encoder_optimizer: Optimizer for the CNN encoder.
+            null_head_optimizer: Optimizer for the null domain MT head.
+            embed_head_optimizer: Optimizer for the non-null domain MT head.
+            loss_func: The ELBO classification loss object.
+            logging: The logger to use for logging.
+            checkpoint_dir: The directory to save checkpoints to.
+            ui: The UI to use to visualize training.
+        """
+        self.bvp_pipeline = bvp_pipeline
         self.encoder = encoder
         self.null_head = null_head
         self.embed_head = embed_head
@@ -85,8 +89,8 @@ class Training:
         self.step = -1
 
     def _forward_pass(self,
-                      amp: torch.Tensor,
-                      phase: torch.Tensor,
+                      amp: torch.Tensor | None,
+                      phase: torch.Tensor | None,
                       bvp: torch.Tensor,
                       gesture: torch.Tensor,
                       device: torch.device,
@@ -100,7 +104,11 @@ class Training:
             bvp: Ground truth BVP from the dataset.
         """
         gesture = gesture.to(device)
-        amp, phase, bvp = amp.to(device), phase.to(device), bvp.to(device)
+        if self.bvp_pipeline:
+            bvp = bvp.to(device)
+        else:
+            amp, phase, bvp = amp.to(device), phase.to(device), bvp.to(device)
+
         # Forward pass
         z, mu, log_sigma = self.encoder(amp, phase, bvp)
 
