@@ -85,6 +85,9 @@ Each file is a 20x20xT tensor.
 
 We use Scipy to read the `.mat` files with `scipy.io.loadmat()`.
 
+BVP lengths are not consistent. 
+We pad them to the all have the same length of 28.
+
 #### Known Issues
 
 The directory `20181130-VS` contains no `6-link` subdirectory.
