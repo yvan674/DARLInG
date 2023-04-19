@@ -16,7 +16,7 @@ class BaseEmbeddingAgent(ABC):
 
     @abstractmethod
     def _produce_action(self, observation: torch.Tensor,
-                        info: None | dict[any]) -> torch.Tensor:
+                        info: dict[any]) -> torch.Tensor:
         """Produces an action based on an observation and info dict."""
         raise NotImplementedError
 
