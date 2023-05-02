@@ -17,6 +17,10 @@ class NullAgent(BaseEmbeddingAgent):
         self.embedding_length = embedding_length
         self.null_value = null_value
 
+    def __repr__(self):
+        return f"NullAgent(embedding_length={self.embedding_length}, " \
+               f"null_value={self.null_value})"
+
     def _produce_action(self, observation: torch.Tensor,
                         info: list[dict[str, any]]) -> torch.Tensor:
         if self.null_value is None:

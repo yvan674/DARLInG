@@ -15,6 +15,9 @@ class KnownDomainAgent(BaseEmbeddingAgent):
         super().__init__()
         self.device = None
 
+    def __repr__(self):
+        return "KnownDomainAgent()"
+
     def _produce_action(self, observation: torch.Tensor,
                         info: list[dict[str, any]]) -> torch.Tensor:
         """Produce an action based on the info dictionary.
