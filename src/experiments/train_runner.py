@@ -7,6 +7,7 @@ Author:
 """
 from argparse import ArgumentParser
 from pathlib import Path
+import warnings
 
 import torch
 import torch.nn as nn
@@ -61,8 +62,8 @@ def run_training(batch_size: int = 64,
                  embed_agent_size: int = None,
                  bvp_pipeline: bool = False,
                  ui: str = "tqdm",
-                 checkpoint_dir: Path = Path("checkpoints/"),
-                 data_dir: Path = Path("data/"),
+                 checkpoint_dir: Path = Path("../../checkpoints/"),
+                 data_dir: Path = Path("../../data/"),
                  small_dataset: bool = True,
                  transformation: str = None,
                  is_debug: bool = False,
@@ -94,17 +95,24 @@ def run_training(batch_size: int = 64,
         small_dataset: Whether to use the small version of the dataset.
         transformation: The signal-to-image transformation to apply during
             this training run. Options are ["deepinsight", "gaf", "mtf", "rp"].
-        is_debug: Whether to consider this run a debugging run.
+        is_debug: Whether to consider this run a debugging run. Appends the
+            "debug" tag to the list of tags when uploading to WandB
         config: The yaml configuration as a dict.
     """
     # SECTION Initial stuff
-    if embed_agent_size is None and embed_agent_value is not "known":
+    if embed_agent_size is None and embed_agent_value != "known":
         raise ValueError("A value must be provided for parameter "
                          f"embed_agent_size if "
                          f"embed_agent_value={embed_agent_value}.")
     # Set tags
+    if transformation is None:
+        if bvp_pipeline:
+            transformation = "bvp_pipeline"
+        else:
+            transformation = "no_transform"
     tags = [transformation, "training"]
     if is_debug:
+        warnings.warn("Running a debug run, `debug` will be appended to tags.")
         tags.append("debug")
 
     # Init wandb
@@ -123,26 +131,29 @@ def run_training(batch_size: int = 64,
         device = torch.device("cpu")
 
     # SECTION Data
-    # Set the signal to image transformation to use.
-    match transformation:
-        case "deepinsight":
-            transform = DeepInsight()
-        case "gaf":
-            transform = GAF()
-        case "mtf":
-            transform = MTF()
-        case "rp":
-            transform = RP()
-        case _:
-            raise ValueError(f"Chosen transformation {transformation}"
-                             f"is not one of the valid options. Valid options "
-                             f"are [`deepinsight`, `gaf`, `mtf`, `rp`]")
-
     # Set up the pipeline
     if bvp_pipeline:
+        warnings.warn("Running with bvp_pipeline=True; no transformation will "
+                      "be applied.")
         amp_pipeline = Pipeline([])
         phase_pipeline = Pipeline([])
     else:
+        # Set the signal to image transformation to use.
+        match transformation:
+            case "deepinsight":
+                transform = DeepInsight()
+            case "gaf":
+                transform = GAF()
+            case "mtf":
+                transform = MTF()
+            case "rp":
+                transform = RP()
+            case _:
+                raise ValueError(
+                    f"Chosen transformation {transformation}is not one of the "
+                    f"valid options. Valid options are "
+                    f"[`deepinsight`, `gaf`, `mtf`, `rp`]"
+                )
         amp_pipeline = Pipeline([LowPassFilter(250, 1000),
                                  StandardScaler(data_dir, "amp"),
                                  transform,
@@ -159,21 +170,25 @@ def run_training(batch_size: int = 64,
                                  small_dataset,
                                  amp_pipeline=amp_pipeline,
                                  phase_pipeline=phase_pipeline,
-                                 return_csi=not bvp_pipeline)
+                                 return_csi=not bvp_pipeline,
+                                 return_bvp=True)
     valid_dataset = WidarDataset(data_dir,
                                  "validation",
                                  small_dataset,
                                  amp_pipeline=amp_pipeline,
                                  phase_pipeline=phase_pipeline,
-                                 return_csi=not bvp_pipeline)
+                                 return_csi=not bvp_pipeline,
+                                 return_bvp=True)
 
     train_dataloader = DataLoader(train_dataset,
                                   batch_size,
-                                  num_workers=(torch.get_num_threads() - 2) / 2,
+                                  num_workers=1,
+                                  # num_workers=(torch.get_num_threads() - 2) // 2,
                                   collate_fn=widar_collate_fn)
     valid_dataloader = DataLoader(valid_dataset,
                                   batch_size,
-                                  num_workers=(torch.get_num_threads() - 2) / 2,
+                                  num_workers=1,
+                                  # num_workers=(torch.get_num_threads() - 2) // 2,
                                   collate_fn=widar_collate_fn)
 
     # SECTION Set up models
@@ -185,6 +200,10 @@ def run_training(batch_size: int = 64,
     mt_ac_fn = activation_fn_map[mt_ac_fn]
 
     # VAE based model
+    # this is hard coded. There are 33 possible domain factors if the domain
+    # factors that are in the ground-truth data is encoded in one-hot.
+    # If embed_agent_size is None, we assume we want to use the ground-truth
+    # domain factors
     domain_embedding_size = 33 if embed_agent_size is None else embed_agent_size
 
     encoder = Encoder(enc_ac_fn, dropout, latent_dim, bvp_pipeline)
@@ -195,7 +214,7 @@ def run_training(batch_size: int = 64,
                                domain_embedding_size)
 
     # Embedding agents
-    null_value = 1. if embed_agent_value in ("known", "one-hot") else None
+    null_value = 0. if embed_agent_value in ("known", "one-hot") else None
     null_agent = NullAgent(domain_embedding_size, null_value)
     if embed_agent_value == "known":
         embed_agent = KnownDomainAgent()
@@ -250,5 +269,5 @@ def run_training(batch_size: int = 64,
 
 if __name__ == '__main__':
     args = parse_args()
-    conf = parse_config_file(args.CONFIG_FP)
+    conf = parse_config_file(args.CONFIG_FP)["train_config"]
     run_training(**conf, config=conf)

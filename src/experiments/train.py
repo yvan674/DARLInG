@@ -103,12 +103,15 @@ class Training:
             amp: Amplitude shift component of the CSI.
             phase: Phase shift component of the CSI.
             bvp: Ground truth BVP from the dataset.
+            gesture: Gesture ground-truths for a given batch.
         """
         gesture = gesture.to(device)
         if self.bvp_pipeline:
-            bvp = bvp.to(device)
+            bvp = bvp.to(device, dtype=torch.float32)
         else:
-            amp, phase, bvp = amp.to(device), phase.to(device), bvp.to(device)
+            amp = amp.to(device, dtype=torch.float32)
+            phase = phase.to(device, dytpe=torch.float32)
+            bvp = bvp.to(device, dtype=torch.float32)
 
         # Forward pass
         z, mu, log_sigma = self.encoder(amp, phase, bvp)
