@@ -135,6 +135,13 @@ Our approach is:
 2. Otherwise, generate the dataset index using `src/data_utils/generate_dataset_index.py`.
 3. Calculate the mean and standard deviation of amplitude and phase using `src/data_utils/calculate_mean_std.py`
 
+## Config File
+
+Some run configuration files are stored in the `run_configs` directory as YAML files.
+These files have a top level key of at least one of the following: `[train_config, test_config]`.
+The `train_runner` script uses the `train_config` dictionary in the config file.
+The contents of the dictionary are passed directly as kwargs to the `run_training()` function.
+
 ## Todo
 
 - [x] Go through the dataset documentation to figure out what the dataset looks like.

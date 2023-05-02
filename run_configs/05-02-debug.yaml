@@ -1,0 +1,15 @@
+train_config:
+  batch_size: 64
+  lr: 0.001
+  epochs: 1
+  alpha: 0.5
+  dropout: 0.3
+  latent_dim: 18
+  optimizer: "adam"
+  enc_ac_fn: "relu"
+  mt_ac_fn: "relu"
+  embed_agent_value: "known"
+  embed_agent_size: null
+  bvp_pipeline: true
+  ui: "tqdm"
+  is_debug: true
