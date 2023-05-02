@@ -200,7 +200,10 @@ class WidarDataset(Dataset):
 
         info = {k: data_record[k]
                 for k in ("user", "room_num", "date", "torso_location",
-                          "face_orientation", "gesture")}
+                          "face_orientation")}
+
+        # Gesture must be in int format and subtracted by 1 to be 0-indexed.
+        info["gesture"] = int(data_record["gesture"]) - 1
 
         if self.return_csi:
             amp = self.amp_pipeline(amp)

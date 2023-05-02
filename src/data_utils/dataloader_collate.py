@@ -17,21 +17,29 @@ def widar_collate_fn(samples):
     the WidarDataset returns Nones. In this case, we return None for the entire
     item batch.
     """
+    # Amps collate
     if samples[0][0] is None:
         amps = None
     else:
         amps = torch.stack([sample[0] for sample in samples])
+    # Phases collate
     if samples[0][1] is None:
         phases = None
     else:
         phases = torch.stack([sample[1] for sample in samples])
+    # BVPs collate
     if samples[0][2] is None:
         bvps = None
     else:
         bvps = torch.stack([sample[2] for sample in samples])
-    infos = [sample[3] for sample in samples]
+    # Infos collate
+    infos = {k: [] for k in samples[0][3].keys()}
+    for sample in samples:
+        for k, v in sample[3].items():
+            infos[k].append(v)
+    infos["gesture"] = torch.tensor(infos["gesture"], dtype=torch.long)
 
-    return amps, bvps, phases, infos
+    return amps, phases, bvps, infos
 
 
 if __name__ == '__main__':
