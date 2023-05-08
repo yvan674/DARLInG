@@ -23,4 +23,9 @@ class GAF(SignalToImageTransformer):
                                        flatten=flatten)
 
     def transform(self, x: np.ndarray, **kwargs) -> np.ndarray:
+        # Input is (time, channels, antennas)
+        # gaf requires (n_samples, n_timestamps)
+        # We stack the channel and antennas channels and swap axes
+        x = x.reshape((x.shape[0], x.shape[1] * x.shape[2]))
+        x = x.swapaxes(0, 1)
         return self.gaf.transform(x)

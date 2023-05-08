@@ -20,7 +20,8 @@ class SignalToImageTransformer(ABC):
         """Processes the signal.
 
         Args:
-            x: Signal to process.
+            x: Signal to process. Shape should always be
+                (time, channels, antennas)
 
         Returns:
             Processed signal.
