@@ -12,7 +12,7 @@ import torch.nn as nn
 
 
 class TripleLoss(nn.Module):
-    def __init__(self, alpha):
+    def __init__(self, alpha, beta):
         """Combination of KL, Reconstruction, and Classification Loss.
 
         The ratio between reconstruction and classification is defined by
@@ -22,6 +22,7 @@ class TripleLoss(nn.Module):
             alpha: The ratio between reconstruction and classification loss.
                 The final loss is calculated as:
                 (alpha) * reconstr_loss + (1 - alpha) * class_loss.
+            beta: The ratio between KL and Reconstruction/Classification loss.
         """
         super().__init__()
 
@@ -29,7 +30,8 @@ class TripleLoss(nn.Module):
         self.ce = nn.CrossEntropyLoss()
         self.alpha = alpha
         self.neg_alpha = 1. - alpha
-        self.const_term = 0.5 * math.log(math.pi)
+        self.beta = beta
+        self.neg_beta = 1. - beta
 
     def forward(self,
                 bvp: torch.Tensor, gesture: torch.Tensor,
@@ -37,7 +39,8 @@ class TripleLoss(nn.Module):
                 bvp_null: torch.Tensor, gesture_null: torch.Tensor,
                 bvp_embed: torch.Tensor, gesture_embed: torch.Tensor,
                 reconstr_loss_only: bool, no_kl_loss: bool
-                ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+                ) -> tuple[torch.Tensor, torch.Tensor,
+                           torch.Tensor, torch.Tensor]:
         """Calculates ELBO loss based on 2AMM10 Practical 5.2.
 
         Args:
@@ -57,9 +60,11 @@ class TripleLoss(nn.Module):
             - KL Divergence.
             - Reconstruction [+ classification] of the null prediction.
             - Reconstruction [+ classification] of the embedding prediction.
+            - Joint Loss (used for the actual backward step)
         """
         if no_kl_loss:
-            kl_loss = None
+            kl_loss = torch.tensor([0], dtype=torch.float32,
+                                   device=self.device)
         else:
             # Reshape mus and log_sigmas to be flat
             mus = mu.reshape(-1)
@@ -77,4 +82,7 @@ class TripleLoss(nn.Module):
             embed_loss = ((self.alpha * embed_loss)
                           + (self.neg_alpha * self.ce(gesture_embed, gesture)))
 
-        return kl_loss, null_loss, embed_loss
+        joint_loss = (self.beta * kl_loss) + (self.neg_beta
+                                              * (null_loss + embed_loss))
+
+        return kl_loss, null_loss, embed_loss, joint_loss
