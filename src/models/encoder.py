@@ -6,7 +6,7 @@ Author:
     Yvan Satyawan <y_satyawan@hotmail.com>
     Jonas Niederle <github.com/jmniederle>
 """
-from typing import Optional, Union, TypeVar
+from typing import TypeVar
 
 import torch
 import torch.nn as nn
