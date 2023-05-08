@@ -174,3 +174,4 @@ The contents of the dictionary are passed directly as kwargs to the `run_trainin
 - [x] Implement null agent
 - [ ] Implement known-domain agent
 - [ ] Implement experimentation framework for signal processing ablation study.
+- [ ] Make sure lists of layers are actually stored as nn.ModuleList
