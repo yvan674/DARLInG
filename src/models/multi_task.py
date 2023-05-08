@@ -7,6 +7,7 @@ Author:
     Jonas Niederle <github.com/jmniederle>
 """
 import torch.nn as nn
+import torch.nn.functional as F
 
 
 class Decoder(nn.Module):
@@ -46,6 +47,8 @@ class Decoder(nn.Module):
         result = self.decoder_input(z)
         result = result.reshape((-1, 512, 4, 4))
         x_reconstr = self.convnet_decoder(result)
+        # Image is now 32x32, we need to make it 20x20
+        x_reconstr = F.interpolate(x_reconstr, size=20)
         return x_reconstr
 
 
@@ -106,7 +109,7 @@ class MultiTaskHead(nn.Module):
                                in_features)
         self.predictor = GesturePredictor(predictor_ac_func,
                                           predictor_dropout,
-                                          in_features)
+                                          in_features=in_features)
 
     def forward(self, z):
         y_bvp = self.decoder(z)
