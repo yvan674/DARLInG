@@ -70,7 +70,7 @@ def find_bvp_of_csi(bvp_dir: Path, sample_record: dict,
     if sample_record["date"] != "20181130":
         bvp_search_path /= "6-link"
 
-    bvp_search_path /= f'user{sample_record["user"]}'
+    bvp_search_path /= f'user{sample_record["user"] + 1}'
     bvp_paths = []
     for csi_stem in sample_record["csi_stems"]:
         bvp_path = sorted(bvp_search_path.glob(f"{csi_stem}-*"))
