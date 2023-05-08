@@ -6,8 +6,59 @@ Author:
     Yvan Satyawan <y_satyawan@hotmail.com>
     Jonas Niederle <github.com/jmniederle>
 """
+from typing import Optional, Union, TypeVar
+
 import torch
 import torch.nn as nn
+
+
+T = TypeVar('T')
+
+
+class AmpPhaseEncoder(nn.Module):
+    def __init__(self,
+                 conv_ac_func: nn.Module = nn.ReLU,
+                 dropout: float = 0.3,
+                 latent_dim: int = 10,
+                 fc_input_size: int = 4608,
+                 input_dim: int = 18):
+        """Encoder that processes the amp and the phase.
+
+        This combines two separate encoders to encode both amp and phase images.
+        """
+        super().__init__()
+        self.amp_encoder = Encoder(conv_ac_func, dropout, latent_dim,
+                                   fc_input_size, input_dim)
+        self.phase_encoder = Encoder(conv_ac_func, dropout, latent_dim,
+                                     fc_input_size, input_dim)
+
+    def forward(self, amp, phase, bvp):
+        z_amp, mu_amp, log_sigma_amp = self.amp_encoder(amp)
+        z_phase, mu_phase, log_sigma_phase = self.phase_encoder(phase)
+
+        return (torch.cat((z_amp, z_phase)),
+                torch.cat((mu_amp, mu_phase)),
+                torch.cat((log_sigma_amp, log_sigma_phase)))
+
+
+class BVPEncoder(nn.Module):
+    def __init__(self,
+                 conv_ac_func: nn.Module = nn.ReLU,
+                 dropout: float = 0.3,
+                 latent_dim: int = 10,
+                 fc_input_size: int = 4608,
+                 input_dim: int = 1):
+        """Encoder that processes only the BVP.
+
+        This is a wrapper of only 1 encoder such that the signature is the same
+        between both the BVP only encoder and the combined amp-phase encoder.
+        """
+        super().__init__()
+        self.encoder = Encoder(conv_ac_func, dropout, latent_dim, fc_input_size,
+                               input_dim)
+
+    def forward(self, amp, phase, bvp):
+        return self.encoder(bvp)
 
 
 class Encoder(nn.Module):
@@ -15,14 +66,12 @@ class Encoder(nn.Module):
                  conv_ac_func: nn.Module = nn.ReLU,
                  dropout: float = 0.3,
                  latent_dim: int = 10,
-                 bvp_pipeline: bool = False):
+                 fc_input_size: int = 4608,
+                 input_dim: int = 1):
         """Encoder model for our network.
 
-        This is an encoder which can accept either amplitude and phase as its
-        input or just the BVP as its input. The number of convnet blocks (note
-        not conv blocks) in the network is 2 if bvp_pipeline is False, one each
-        for amp and phase. Otherwise, only one is used for the precalculated
-        BVP encoding.
+        This is an encoder which can accept either amplitude, phase, or BVP as
+        its input.
         """
         super(Encoder, self).__init__()
 
@@ -35,58 +84,29 @@ class Encoder(nn.Module):
                 nn.Dropout(dropout)
             )
 
-        if bvp_pipeline:
-            self.convnets = [
-                nn.Sequential(
-                    conv_block(1, 128),
-                    conv_block(128, 256),
-                    conv_block(256, 512),
-                    nn.Flatten()
-                )
-            ]
-        else:
-            self.convnets = [
-                nn.Sequential(
-                    conv_block(18, 128),
-                    conv_block(128, 256),
-                    conv_block(256, 512),
-                    nn.Flatten()
-                ),
-                nn.Sequential(
-                    conv_block(18, 128),
-                    conv_block(128, 256),
-                    conv_block(256, 512),
-                    nn.Flatten()
-                )
-            ]
+        self.convnet = nn.Sequential(conv_block(input_dim, 128),
+                                     conv_block(128, 256),
+                                     conv_block(256, 512),
+                                     nn.Flatten())
 
+        # TODO: Calculate input size dynamically here
+        self.fc = nn.Linear(fc_input_size, 8192)
 
-        self.bvp_pipeline = bvp_pipeline
-        self.fc_mu_amp = nn.Linear(8192, latent_dim)
-        self.fc_sigma_amp = nn.Linear(8192, latent_dim)
+        self.fc_mu = nn.Linear(8192, latent_dim)
+        self.fc_sigma = nn.Linear(8192, latent_dim)
 
-        self.fc_mu_phase = nn.Linear(8192, latent_dim)
-        self.fc_sigma_phase = nn.Linear(8192, latent_dim)
-
-    def forward(self, amp, phase, bvp):
+    def forward(self, x):
         """Forward pass.
 
         We include the bvp parameter in this method, since we also use this
         encoder to encode the BVP data.
         """
-        if self.bvp_pipeline:
-            h = self.convnets[0](bvp)
-        else:
-            h_amp = self.convnets[0](amp)
-            h_phase = self.convnets[1](phase)
-            h = torch.cat([h_amp, h_phase], dim=1)
-
-
+        h = self.convnet(x)
+        h = self.fc(h)
         mu = self.fc_mu(h)
         log_sigma = self.fc_sigma(h)
 
         z = self.reparameterization(mu, log_sigma)
-
         return z, mu, log_sigma
 
     @staticmethod
