@@ -11,5 +11,7 @@ train_config:
   embed_agent_value: "known"
   embed_agent_size: null
   bvp_pipeline: true
+  bvp_agg: "sum"
   ui: "tqdm"
   is_debug: true
+  on_cpu: true
