@@ -13,7 +13,7 @@ class TqdmUI(BaseUI):
     def __init__(self, train_steps: int, valid_steps: int, epochs: int,
                  initial_data: dict[str, any]):
         super().__init__(train_steps, valid_steps, epochs, initial_data)
-        total_steps = (valid_steps + 2 * train_steps) * epochs
+        total_steps = (valid_steps + train_steps) * epochs
         self.current_epoch = 1
         self.total_epochs = epochs
         self.prog_bar = tqdm(desc=f"Epoch: 1 of {epochs} | "
@@ -21,7 +21,7 @@ class TqdmUI(BaseUI):
 
     def update_data(self, data: dict[str, any]):
         if "epoch" in data:
-            self.current_epoch = data["epoch"]
+            self.current_epoch = data["epoch"] + 1
         if "train_loss" in data:
             self.prog_bar.set_description(f"Epoch: {self.current_epoch} of "
                                           f"{self.total_epochs} | "
