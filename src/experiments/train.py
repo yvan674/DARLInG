@@ -107,11 +107,9 @@ class Training:
         """
         gesture = gesture.to(device)
         if self.bvp_pipeline:
-            bvp = bvp.to(device, dtype=torch.float32)
+            bvp = bvp.to(device)
         else:
-            amp = amp.to(device, dtype=torch.float32)
-            phase = phase.to(device, dytpe=torch.float32)
-            bvp = bvp.to(device, dtype=torch.float32)
+            amp, phase, bvp = amp.to(device), phase.to(device), bvp.to(device)
 
         # Forward pass
         z, mu, log_sigma = self.encoder(amp, phase, bvp)
@@ -119,18 +117,17 @@ class Training:
         # Generate domain embeddings
         domain_embedding = self.embedding_agent(z, info)
         null_embedding = self.null_agent(z, info)
-        batch_null_embedding = torch.cat(len(amp) * [self.null_embedding])
 
         # Run the heads
         bvp_null, gesture_null = self.null_head(
-            torch.cat([z, batch_null_embedding], dim=1)
+            torch.cat([z, null_embedding], dim=1)
         )
         bvp_embed, gesture_embed = self.embed_head(
             torch.cat([z, domain_embedding], dim=1)
         )
 
         # Calculate losses
-        kl_loss, null_loss, embed_loss = self.loss_func(
+        kl_loss, null_loss, embed_loss, joint_loss = self.loss_func(
             bvp, gesture, mu, log_sigma,
             bvp_null, gesture_null, bvp_embed, gesture_embed,
             reconstruction_loss_only, no_kl_loss
@@ -145,7 +142,8 @@ class Training:
                 "gesture_embed": gesture_embed,
                 "kl_loss": kl_loss,
                 "null_loss": null_loss,
-                "embed_loss": embed_loss}
+                "embed_loss": embed_loss,
+                "joint_loss": joint_loss}
 
     def _train_vae(self, train_loader: DataLoader, device: torch.device,
                    epoch: int):
@@ -163,9 +161,7 @@ class Training:
             self.encoder_optimizer.zero_grad()
             self.null_head_optimizer.zero_grad()
             self.embed_head_optimizer.zero_grad()
-            pass_result["kl_loss"].backward()
-            pass_result["null_loss"].backward()
-            pass_result["embed_loss"].backward()
+            pass_result["joint_loss"].backward()
             self.encoder_optimizer.step()
             self.null_head_optimizer.step()
             self.embed_head_optimizer.step()
@@ -216,7 +212,7 @@ class Training:
                  "rate": rate}
             )
             self.logging.log(log_dict, self.step)
-            self.ui.step(1)
+            self.ui.step(len(info["user"]))
 
     def _train_agent(self, train_loader: DataLoader, device: torch.device,
                      epoch: int):
@@ -240,6 +236,7 @@ class Training:
             self.ui.update_data({"loss_diff": loss_diff,
                                  "rate": 1 / (current_time - start_time),
                                  "epoch": epoch})
+            self.ui.step(len(info["user"]))
 
     def _validate_holistic(self, valid_loader: DataLoader, device,
                            epoch: int) -> float:
@@ -295,13 +292,15 @@ class Training:
                  "batch": batch_idx,
                  "rate": rate}
             )
-            bvp = bvp
             bvp_null = pass_result["bvp_null"]
             bvp_embed = pass_result["bvp_embed"]
+            self.ui.step(len(info["user"]))
 
-        gesture_gts = torch.tensor(gesture_gts)
-        gesture_null_preds = torch.tensor(gesture_null_preds)
-        gesture_embed_preds = torch.tensor(gesture_embed_preds)
+        gesture_gts = torch.cat(gesture_gts)
+        gesture_null_preds = torch.cat(gesture_null_preds)
+        gesture_null_preds = torch.argmax(gesture_null_preds, dim=1)
+        gesture_embed_preds = torch.cat(gesture_embed_preds)
+        gesture_embed_preds = torch.argmax(gesture_embed_preds, dim=1)
 
         # Calculate metrics over entire validation set
         joint_losses = float(np.mean(np.array(joint_losses)))
@@ -357,7 +356,7 @@ class Training:
             .detach() \
             .cpu() \
             .numpy() \
-            .reshape([-1, 32, 32])
+            .reshape([-1, 20, 20])
         img_array = (img_array * 255).astype('uint8')
         img_arrays = [Image.fromarray(img) for img in img_array]
 
@@ -398,7 +397,7 @@ class Training:
 
     def _conf_matrix(self, gesture_gt, gesture_pred):
         """Generates a conf-matrix plot"""
-        fig, ax = plt.subplot()
+        fig, ax = plt.subplots()
         ax.matshow(self.conf_mat(gesture_gt, gesture_pred))
         # Put VAE to eval mode
         self.encoder.eval()
@@ -412,8 +411,9 @@ class Training:
         if curr_joint_loss < self.best_joint_loss:
             checkpoint_fp = (self.checkpoint_dir
                              / f"{self.logging.name}-ep-{epoch}.pth")
-            if self.prev_checkpoint_fp.exists():
-                self.prev_checkpoint_fp.unlink()
+            if self.prev_checkpoint_fp is not None:
+                if self.prev_checkpoint_fp.exists():
+                    self.prev_checkpoint_fp.unlink()
 
             torch.save(
                 {
