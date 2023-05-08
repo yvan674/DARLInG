@@ -5,7 +5,7 @@ Loads both BVP and CSI information from the Widar3.0 Dataset.
 import pickle
 from pathlib import Path
 from time import perf_counter
-from typing import List
+from typing import List, Optional
 
 import csiread
 import numpy as np
@@ -18,10 +18,11 @@ from signal_processing.pipeline import Pipeline
 
 
 class WidarDataset(Dataset):
-    csi_length = 2048
+    csi_length = 2048  # Tha max lengths we want to use.
 
     def __init__(self, root_path: Path, split_name: str, is_small: bool = False,
                  downsample_multiplier: int = 1, return_bvp: bool = True,
+                 bvp_agg: Optional[str] = None,
                  return_csi: bool = True,
                  amp_pipeline: Pipeline = Pipeline([torch.from_numpy]),
                  phase_pipeline: Pipeline = Pipeline([torch.from_numpy])):
@@ -40,10 +41,10 @@ class WidarDataset(Dataset):
         get_item index by the appropriate amount.
 
         A single data point in this dataset consists of:
-        1) 3-D array of amplitudes with the shape [pn, cn, an, rn] where:
+        1) 3-D array of amplitudes with the shape [pn, cn, an,] where:
             - pn: packet number (timestamp)
             - cn: Subcarrier channel number [0,...,29]
-            - an: antenna number [0, ..., 18]
+            - an: antenna number (6 receivers, 3 antennas each) [0, ..., 17]
         2) 3-D array of phase shifts with the same shape.
         3) BVP as 3-D tensor of shape [20, 20, T], where T is the timestep
         4) Information about the sample as a dictionary with keys [`user`,
@@ -69,6 +70,8 @@ class WidarDataset(Dataset):
             return_bvp: Whether the BVP should be returned. If False,
                 then None is provided as the BVP value. Should make it a lot
                 faster to load samples if no BVP is necessary.
+            bvp_agg: Aggregation method for BVP. Options are
+                [`stack`, `1d`, `sum`].
             return_csi: Whether the CSI amplitude and phase should be returned.
                 If False, then None is provided as the amplitude and phase
                 values.
@@ -84,10 +87,20 @@ class WidarDataset(Dataset):
                              f"parameter `split_name`")
         self.split_name = split_name
         self.is_small = is_small
+        # ts_length is the array size returned given the downsample multiplier.
         self.ts_length = self.csi_length // downsample_multiplier
         self.downsample_multiplier = downsample_multiplier
         self.return_bvp = return_bvp
         self.return_csi = return_csi
+
+        if (bvp_agg is not None) and (bvp_agg not in ("stack", "1d", "sum")):
+            raise ValueError(
+                f"Parameter bvp_agg is {bvp_agg} but must be one of"
+                f"[`stack`, `1d`, `sum`].")
+        if (bvp_agg is None) and return_bvp:
+            raise ValueError("Parameter bvp_agg must be filled if returning "
+                             "a BVP.")
+        self.bvp_agg = bvp_agg
 
         self.amp_pipeline = amp_pipeline
         self.phase_pipeline = phase_pipeline
@@ -126,13 +139,12 @@ class WidarDataset(Dataset):
     def _load_bvp_file(self, bvp_file_path: Path) -> np.ndarray:
         """Loads a BVP file taking into account if this is a small dataset.
 
-        Empirical exploration has shown that the longest BVP has a length of
-        28.
+        Notes:
+            Behavior is now changed to sum over the time dimension
 
         Returns:
-            The zero-padded BVP array.
+            The summed (over the time dimension) BVP with shape (1, 20, 20)
         """
-        bvp_padded = np.zeros((20, 20, 28))
         if self.is_small:
             # widar_small moves the files to a different location, so we
             # overwrite it here.
@@ -141,11 +153,32 @@ class WidarDataset(Dataset):
         try:
             # Some BVPs are empty mat files or have a length of 0.
             bvp = loadmat(str(bvp_file_path))["velocity_spectrum_ro"]
-            bvp_padded[:, :, :bvp.shape[2]] = bvp
         except MatReadError:
             pass
+            bvp = np.zeros((20, 20, 28), dtype=np.float32)
 
-        return bvp_padded
+        match self.bvp_agg:
+            case "stack":
+                # Reshape to (time, 20, 20)
+                bvp = np.moveaxis(bvp, -1, 0)
+                out = np.zeros((28, 20, 20))
+                out[:bvp.shape[0], :, :] = bvp
+            case "1d":
+                # Move time axis forward
+                bvp = np.moveaxis(bvp, -1, 0)
+                # Reshape last two dims together
+                bvp = bvp.reshape((bvp.shape[0], 400))
+                out = np.zeros((1, 28, 400))
+                out[0, :bvp.shape[0], :] = bvp
+            case "sum":
+                bvp = np.sum(bvp, axis=2, dtype=np.float32)
+                out = bvp.reshape((1, 20, 20))
+            case _:
+                raise ValueError("Never should've come here - Some bandit in "
+                                 "Skyrim")
+
+        return out
+
 
     def __str__(self):
         return f"WidarDataset: {self.split_name}" \
@@ -159,18 +192,25 @@ class WidarDataset(Dataset):
         return self.total_samples
 
     def _stack_csi_arrays(self, csi_arrays: List[np.ndarray]) -> np.ndarray:
-        """Stacks the CSI arrays according to the stack mode specified."""
-        stacked_array = np.zeros((self.csi_length, 30, 18), dtype=complex)
+        """Stacks the ragged CSI arrays."""
+        stacked_array = np.zeros((self.ts_length, 30, 18), dtype=complex)
 
         for i, arr in enumerate(csi_arrays):
-            if arr.shape[0] >= self.csi_length:
-                s = self.ts_length
-            else:
-                s = arr.shape[0]
-            d = self.downsample_multiplier
+            # First resample the array and get rid of the last dim, since it's
+            # always 1.
+            arr = arr[::self.downsample_multiplier, :, :, 0]
 
-            reshaped = arr[:self.csi_length:d, :, :, 0]
-            stacked_array[:s, :, i * 3:(i + 1) * 3] = reshaped
+            if arr.shape[0] >= self.ts_length:
+                # If resampled array is longer than our desired array, we cut
+                # it off
+                cutoff = self.ts_length
+            else:
+                # Otherwise, the cutoff is the length of the array
+                cutoff = arr.shape[0]
+
+            # Fill the stacked array with this array's values in the appropriate
+            # antennas channel dims.
+            stacked_array[:cutoff, :, i * 3:(i + 1) * 3] = arr
 
         return stacked_array
 
@@ -187,8 +227,8 @@ class WidarDataset(Dataset):
             csi_files = [self._load_csi_file(fp)
                          for fp in data_record[f"csi_paths_{csi_index}"]]
             csi = self._stack_csi_arrays(csi_files)
-            amp = np.absolute(csi)
-            phase = np.angle(csi)
+            amp = np.absolute(csi).astype(np.float32)
+            phase = np.angle(csi).astype(np.float32)
         else:
             amp, phase = None, None
 
@@ -219,6 +259,7 @@ if __name__ == '__main__':
     p.add_argument("FP", type=Path,
                    help="Path to the data root.")
     args = p.parse_args()
-    d1 = WidarDataset(args.FP, "train", is_small=True)
-    print(d1)
+    d1 = WidarDataset(args.FP, "train", is_small=True,
+                      downsample_multiplier=2, bvp_agg="stack")
+    print(d1[0])
     breakpoint()
