@@ -143,13 +143,15 @@ def parse_files(widar_dir: Path, num_repetitions: int | None):
                 else:
                     # csi_stems doesn't include the receiver number
                     # This way, we have a list of unique repetition file stems.
+                    # We also turn all numeric values to ints and make them
+                    # 0-indexed
                     sample_records[file_str] = {
-                        "user": file_data[0],
+                        "user": int(file_data[0]) - 1,
                         "room_num": DATE_ROOM_MAPPING[date_dir.stem],
                         "date": date_dir.stem,
-                        "torso_location": file_data[2],
-                        "face_orientation": file_data[3],
-                        "gesture": file_data[1],
+                        "torso_location": int(file_data[2]) - 1,
+                        "face_orientation": int(file_data[3]) - 1,
+                        "gesture": int(file_data[1]) - 1,
                         "csi_stems": [file.stem[:-3]]
                     }
         keys_to_del = []
