@@ -152,7 +152,8 @@ class WidarDataset(Dataset):
 
         try:
             # Some BVPs are empty mat files or have a length of 0.
-            bvp = loadmat(str(bvp_file_path))["velocity_spectrum_ro"]
+            bvp = loadmat(str(bvp_file_path))["velocity_spectrum_ro"]\
+                .astype(np.float32)
         except MatReadError:
             pass
             bvp = np.zeros((20, 20, 28), dtype=np.float32)
@@ -161,14 +162,14 @@ class WidarDataset(Dataset):
             case "stack":
                 # Reshape to (time, 20, 20)
                 bvp = np.moveaxis(bvp, -1, 0)
-                out = np.zeros((28, 20, 20))
+                out = np.zeros((28, 20, 20), dtype=np.float32)
                 out[:bvp.shape[0], :, :] = bvp
             case "1d":
                 # Move time axis forward
                 bvp = np.moveaxis(bvp, -1, 0)
                 # Reshape last two dims together
                 bvp = bvp.reshape((bvp.shape[0], 400))
-                out = np.zeros((1, 28, 400))
+                out = np.zeros((1, 28, 400), dtype=np.float32)
                 out[0, :bvp.shape[0], :] = bvp
             case "sum":
                 bvp = np.sum(bvp, axis=2, dtype=np.float32)
@@ -243,7 +244,7 @@ class WidarDataset(Dataset):
                           "face_orientation")}
 
         # Gesture must be in int format and subtracted by 1 to be 0-indexed.
-        info["gesture"] = int(data_record["gesture"]) - 1
+        info["gesture"] = data_record["gesture"]
 
         if self.return_csi:
             amp = self.amp_pipeline(amp)
