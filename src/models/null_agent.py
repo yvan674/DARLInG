@@ -22,12 +22,13 @@ class NullAgent(BaseEmbeddingAgent):
                f"null_value={self.null_value})"
 
     def _produce_action(self, observation: torch.Tensor,
-                        info: list[dict[str, any]]) -> torch.Tensor:
+                        info: dict[str, list[any]]) -> torch.Tensor:
+        batch_size = len(info["user"])
         if self.null_value is None:
-            fill_value = 1 / len(info)
+            fill_value = 1 / batch_size
         else:
             fill_value = self.null_value
-        return torch.full((len(info), self.embedding_length),
+        return torch.full((batch_size, self.embedding_length),
                           fill_value=fill_value,
                           device=self.device)
 
