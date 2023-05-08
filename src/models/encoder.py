@@ -89,7 +89,6 @@ class Encoder(nn.Module):
                                      conv_block(256, 512),
                                      nn.Flatten())
 
-        # TODO: Calculate input size dynamically here
         self.fc = nn.Linear(fc_input_size, 8192)
 
         self.fc_mu = nn.Linear(8192, latent_dim)
