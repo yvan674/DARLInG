@@ -5,7 +5,6 @@ Training function for DARLInG.
 from pathlib import Path
 
 import numpy as np
-from PIL import Image
 from time import perf_counter
 
 import matplotlib.pyplot as plt
@@ -21,6 +20,8 @@ from wandb.wandb_run import Run
 from ui.base_ui import BaseUI
 from models.base_embedding_agent import BaseEmbeddingAgent
 from loss.triple_loss import TripleLoss
+from utils.colors import colorcet_to_image_palette
+from utils.images import tensor_to_image
 
 
 class Training:
@@ -87,6 +88,8 @@ class Training:
                                         num_classes=num_classes)
 
         self.step = -1
+
+        self.color_palette = colorcet_to_image_palette("bgy")
 
     def _forward_pass(self,
                       amp: torch.Tensor | None,
@@ -275,10 +278,10 @@ class Training:
                                 + embed_loss_value)
 
             # Add stuff to lists
-            kl_losses.append(kl_loss_value)
-            joint_losses.append(joint_loss_value)
-            bvp_null_losses.append(null_loss_value)
-            bvp_embed_losses.append(embed_loss_value)
+            kl_losses.append(kl_loss_value.item)
+            joint_losses.append(joint_loss_value.item)
+            bvp_null_losses.append(null_loss_value.item)
+            bvp_embed_losses.append(embed_loss_value.item)
             gesture_gts.append(info["gesture"].detach())
             gesture_null_preds.append(pass_result["gesture_null"])
             gesture_embed_preds.append(pass_result["gesture_embed"])
@@ -341,26 +344,6 @@ class Training:
 
         return joint_losses
 
-    @staticmethod
-    def _tensor_to_image(data: torch.Tensor, img_idxs: tuple) -> list:
-        """Takes a raw data tensor and turns it into a PIL image.
-
-        Args:
-            data: Tensor in shape [batch, 1, 32, 32].
-            img_idxs: Img indices to turn into the output image.
-
-        Returns:
-            An image in mode "grayscale".
-        """
-        img_array = data[img_idxs[0]:img_idxs[1]] \
-            .detach() \
-            .cpu() \
-            .numpy() \
-            .reshape([-1, 20, 20])
-        img_array = (img_array * 255).astype('uint8')
-        img_arrays = [Image.fromarray(img) for img in img_array]
-
-        return img_arrays
 
     def _visualize_and_set_images(self,
                                   bvp: torch.Tensor,
@@ -378,9 +361,11 @@ class Training:
             log_prefix: Entry prefix to add in the log dict. Usually `train` or
                 `valid`.
         """
-        original_imgs = self._tensor_to_image(bvp, (0, 3))
-        null_reconstr_imgs = self._tensor_to_image(bvp_null, (0, 3))
-        embed_reconstr_imgs = self._tensor_to_image(bvp_embed, (0, 3))
+        original_imgs = tensor_to_image(bvp, (0, 3), self.color_palette)
+        null_reconstr_imgs = tensor_to_image(bvp_null, (0, 3),
+                                             self.color_palette)
+        embed_reconstr_imgs = tensor_to_image(bvp_embed, (0, 3),
+                                              self.color_palette)
 
         log_dict[f"{log_prefix}_bvp"] = [wandb.Image(i)
                                          for i in original_imgs]
