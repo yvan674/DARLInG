@@ -278,10 +278,10 @@ class Training:
                                 + embed_loss_value)
 
             # Add stuff to lists
-            kl_losses.append(kl_loss_value.item)
-            joint_losses.append(joint_loss_value.item)
-            bvp_null_losses.append(null_loss_value.item)
-            bvp_embed_losses.append(embed_loss_value.item)
+            kl_losses.append(kl_loss_value.item())
+            joint_losses.append(joint_loss_value.item())
+            bvp_null_losses.append(null_loss_value.item())
+            bvp_embed_losses.append(embed_loss_value.item())
             gesture_gts.append(info["gesture"].detach())
             gesture_null_preds.append(pass_result["gesture_null"])
             gesture_embed_preds.append(pass_result["gesture_embed"])
@@ -305,8 +305,13 @@ class Training:
         gesture_embed_preds = torch.cat(gesture_embed_preds)
         gesture_embed_preds = torch.argmax(gesture_embed_preds, dim=1)
 
+        # Move all to cpu
+        gesture_gts = gesture_gts.to(torch.device("cpu"))
+        gesture_null_preds = gesture_null_preds.to(torch.device("cpu"))
+        gesture_embed_preds = gesture_embed_preds.to(torch.device("cpu"))
+
         # Calculate metrics over entire validation set
-        joint_losses = float(np.mean(np.array(joint_losses)))
+        joint_losses = np.mean(np.array(joint_losses))
         log_dict = {
             "valid_kl_loss": np.mean(np.array(kl_losses)),
             "valid_joint_loss": joint_losses,
