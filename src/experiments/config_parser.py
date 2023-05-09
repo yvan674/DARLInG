@@ -206,10 +206,10 @@ def parse_config_file(config_fp: Path) -> dict[str, dict[str, any]]:
                          f"embed_agent_size if embed_agent_value="
                          f"{config_dict['embed']['embed_agent_value']}.")
 
-    if (config_dict["bvp"]["bvp_agg"] is not None) \
-            and (config_dict["bvp"]["bvp_agg"] not in ("stack", "1d", "sum")):
+    if (config_dict["data"]["bvp_agg"] is not None) \
+            and (config_dict["data"]["bvp_agg"] not in ("stack", "1d", "sum")):
         raise ValueError(f"Parameter bvp_agg is "
-                         f"{config_dict['bvp']['bvp_agg']} but must be one of"
+                         f"{config_dict['data']['bvp_agg']} but must be one of"
                          f"[`stack`, `1d`, `sum`].")
 
     return config_dict

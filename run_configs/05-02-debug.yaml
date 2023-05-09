@@ -13,6 +13,7 @@ encoder:
   latent_dim: 18
 
 optim_loss:
+  lr: 0.00001
   optimizer: "sgd"
 
 debug:
