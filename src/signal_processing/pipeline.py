@@ -52,22 +52,22 @@ class Pipeline(SignalProcessor):
                                        SignalToImageTransformer,
                                        callable],
                       standard_scaler: StandardScaler):
-        pipeline = []
+        processors = []
         for s in str_list:
             match s:
                 case "lowpass_filter":
-                    pipeline.append(LowPassFilter(250, 1000))
+                    processors.append(LowPassFilter(250, 1000))
                 case "phase_derivative":
-                    pipeline.append(PhaseDerivative())
+                    processors.append(PhaseDerivative())
                 case "phase_filter":
-                    pipeline.append(PhaseFilter([3, 3, 1], [3, 3, 1]))
+                    processors.append(PhaseFilter([3, 3, 1], [3, 3, 1]))
                 case "phase_unwrap":
-                    pipeline.append(PhaseUnwrap())
+                    processors.append(PhaseUnwrap())
                 case "torch.from_numpy":
-                    pipeline.append(torch.from_numpy)
+                    processors.append(torch.from_numpy)
                 case "standard_scalar":
-                    pipeline.append(standard_scaler)
+                    processors.append(standard_scaler)
                 case "transform":
-                    pipeline.append(transform)
+                    processors.append(transform)
 
-        return Pipeline(pipeline)
+        return Pipeline(processors)

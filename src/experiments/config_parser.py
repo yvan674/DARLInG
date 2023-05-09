@@ -164,8 +164,8 @@ def parse_config_file(config_fp: Path) -> dict[str, dict[str, any]]:
 
     config_dict = {}
 
-    if "training" in yaml_dict:
-        config_dict["training"] = train_config(**yaml_dict["training"])
+    if "train" in yaml_dict:
+        config_dict["train"] = train_config(**yaml_dict["train"])
     else:
         config_dict["training"] = train_config()
     if "data" in yaml_dict:

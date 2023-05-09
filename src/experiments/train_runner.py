@@ -171,8 +171,6 @@ def run_training(config: dict[str, dict[str, any]]):
     mt_dec_ac_fn = activation_fn_map[config["mt"]["decoder_activation_fn"]]
     mt_pred_ac_fn = activation_fn_map[config["mt"]["predictor_activation_fn"]]
 
-
-
     # VAE based model
     # this is hard coded. There are 33 possible domain factors if the domain
     # factors that are in the ground-truth data is encoded in one-hot.
