@@ -285,12 +285,13 @@ def run_training(config: dict[str, dict[str, any]]):
         loss_fn,                                              # Loss function
         run, checkpoint_dir, ui                               # Utils
     )
-    train_embedding_agent = config["embed"]["embed_agent_value"] != "known"
-    training.train(train_embedding_agent=train_embedding_agent,
-                   train_loader=train_dataloader,
-                   valid_loader=valid_dataloader,
-                   epochs=config["train"]["epochs"],
-                   device=device)
+    training.train(
+        train_embedding_agent=config["embed"]["embed_agent_value"] != "known",
+        train_loader=train_dataloader,
+        valid_loader=valid_dataloader,
+        epochs=config["train"]["epochs"],
+        device=device
+    )
 
 
 if __name__ == '__main__':
