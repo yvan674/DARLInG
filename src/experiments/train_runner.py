@@ -26,9 +26,6 @@ from models.null_agent import NullAgent
 from models.known_domain_agent import KnownDomainAgent
 from loss.triple_loss import TripleLoss
 from signal_processing.pipeline import Pipeline
-from signal_processing.lowpass_filter import LowPassFilter
-from signal_processing.phase_unwrap import PhaseUnwrap
-from signal_processing.phase_filter import PhaseFilter
 from signal_processing.standard_scaler import StandardScaler
 from signal_to_image.deepinsight_transform import DeepInsight
 from signal_to_image.gaf_transform import GAF
@@ -128,11 +125,13 @@ def run_training(config: dict[str, dict[str, any]]):
 
         amp_pipeline = Pipeline.from_str_list(
             config["data"]["amp_pipeline"],
-            transform
+            transform,
+            StandardScaler(config["data"]["data_dir"], "amp")
         )
         phase_pipeline = Pipeline.from_str_list(
             config["data"]["phase_pipeline"],
-            transform
+            transform,
+            StandardScaler(config["data"]["data_dir"], "phase")
         )
 
     train_dataset = WidarDataset(data_dir,

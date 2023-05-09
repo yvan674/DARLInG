@@ -53,13 +53,13 @@ def data_config(data_dir: Path = Path("../../data/"),
             as a list of strings, where each string is a function to call on
             the data. The possible functions are:
                 [`lowpass_filter`, `phase_derivative`, `phase_filter`,
-                `phase_unwrap`, `phase_linear_fitting`, `torch.from_numpy`].
+                `phase_unwrap`, `standard_scalar`, `torch.from_numpy`].
             The default is [`torch.from_numpy`].
         phase_pipeline: Pipeline to use for the phase data. This is provided
             as a list of strings, where each string is a function to call on
             the data. The possible functions are:
                 [`lowpass_filter`, `phase_derivative`, `phase_filter`,
-                `phase_unwrap`, `phase_linear_fitting`, `torch.from_numpy`].
+                `phase_unwrap`, `standard_scalar`, `torch.from_numpy`].
             The default is [`torch.from_numpy`].
     """
     if amp_pipeline is None:
