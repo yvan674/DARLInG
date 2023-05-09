@@ -7,7 +7,7 @@ import yaml
 def train_config(batch_size: int = 64,
                  epochs: int = 15,
                  ui: str = "tqdm",
-                 checkpoint_dir: Path = Path("../../checkpoints/"),
+                 checkpoint_dir: str | Path = Path("../../checkpoints/"),
                  bvp_pipeline: bool = False) -> dict[str, any]:
     """Training configuration.
 
@@ -22,6 +22,9 @@ def train_config(batch_size: int = 64,
         bvp_pipeline: Whether to use the BVP pipeline. When BVP pipeline is
             used, then CSI is ignored as the input data.
     """
+    if type(checkpoint_dir) is str:
+        checkpoint_dir = Path(checkpoint_dir)
+
     return {"batch_size": batch_size,
             "epochs": epochs,
             "ui": ui,
@@ -29,7 +32,7 @@ def train_config(batch_size: int = 64,
             "bvp_pipeline": bvp_pipeline}
 
 
-def data_config(data_dir: Path = Path("../../data/"),
+def data_config(data_dir: str | Path = Path("../../data/"),
                 small_dataset: bool = True,
                 downsample_multiplier: int = 2,
                 transformation: str = None,
@@ -62,6 +65,9 @@ def data_config(data_dir: Path = Path("../../data/"),
                 `phase_unwrap`, `standard_scalar`, `torch.from_numpy`].
             The default is [`torch.from_numpy`].
     """
+    if type(data_dir) is str:
+        data_dir = Path(data_dir)
+
     if amp_pipeline is None:
         amp_pipeline = ["torch.from_numpy"]
     if phase_pipeline is None:
