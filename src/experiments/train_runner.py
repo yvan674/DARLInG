@@ -209,13 +209,15 @@ def run_training(config: dict[str, dict[str, any]]):
                               mt_head_input_dim,
                               mt_pred_ac_fn,
                               config["mt"]["predictor_dropout"],
-                              domain_embedding_size)
+                              domain_embedding_size,
+                              input_features)
     embed_head = MultiTaskHead(mt_dec_ac_fn,
                                config["mt"]["decoder_dropout"],
                                mt_head_input_dim,
                                mt_pred_ac_fn,
                                config["mt"]["predictor_dropout"],
-                               domain_embedding_size)
+                               domain_embedding_size,
+                               input_features)
 
     # Embedding agents
     if config["embed"]["embed_agent_value"] in ("known", "one-hot"):
@@ -296,5 +298,4 @@ def run_training(config: dict[str, dict[str, any]]):
 
 if __name__ == '__main__':
     args = parse_args()
-    conf = parse_config_file(args.CONFIG_FP)["train_config"]
-    run_training(config=conf)
+    run_training(parse_config_file(args.CONFIG_FP))

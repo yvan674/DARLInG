@@ -14,7 +14,8 @@ class Decoder(nn.Module):
     def __init__(self,
                  conv_ac_func: nn.Module = nn.ReLU,
                  dropout: float = 0.3,
-                 latent_dim: int = 10):
+                 latent_dim: int = 10,
+                 output_layers: int = 1):
         """Decoder from a VAE.
 
         Author:
@@ -39,7 +40,7 @@ class Decoder(nn.Module):
             conv_block_decoder(512, 256),
             conv_block_decoder(256, 128),
             conv_block_decoder(128, 128),
-            nn.Conv2d(128, 1, kernel_size=3, padding=1),
+            nn.Conv2d(128, output_layers, kernel_size=3, padding=1),
             nn.Sigmoid()
         )
 
@@ -88,7 +89,8 @@ class MultiTaskHead(nn.Module):
                  encoder_latent_dim: int,
                  predictor_ac_func: nn.Module,
                  predictor_dropout: float,
-                 domain_label_size: int):
+                 domain_label_size: int,
+                 output_layers: int):
         """Multi Task Prediction Head.
 
         Args:
@@ -106,7 +108,8 @@ class MultiTaskHead(nn.Module):
 
         self.decoder = Decoder(decoder_ac_func,
                                decoder_dropout,
-                               in_features)
+                               in_features,
+                               output_layers)
         self.predictor = GesturePredictor(predictor_ac_func,
                                           predictor_dropout,
                                           in_features=in_features)
