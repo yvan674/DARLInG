@@ -14,10 +14,11 @@ import torch.nn as nn
 from torch.utils.data import DataLoader
 from torch.optim import Adam, SGD
 import wandb
-import yaml
+
 
 from data_utils.widar_dataset import WidarDataset
 from data_utils.dataloader_collate import widar_collate_fn
+from experiments.config_parser import parse_config_file
 from experiments.train import Training
 from models.encoder import AmpPhaseEncoder, BVPEncoder
 from models.multi_task import MultiTaskHead
@@ -43,12 +44,6 @@ def parse_args():
     return p.parse_args()
 
 
-def parse_config_file(config_fp: Path) -> dict[str, any]:
-    """Parses the yaml config file."""
-    with open(config_fp, "r") as f:
-        return yaml.safe_load(f)
-
-
 CONV_NUM_FEATURES_MAPS = {
     "bvp_stack": 4608,     # 28x20x20 dimensional BVP
     "bvp_1d": 102400,      # 1x28x400 dimensional BVP
@@ -65,78 +60,22 @@ CONV_INPUT_MAP = {
 }
 
 
-def run_training(batch_size: int = 64,
-                 lr: float = 0.001,
-                 epochs: int = 15,
-                 alpha: float = 0.5,
-                 beta: float = 0.5,
-                 dropout: float = 0.3,
-                 latent_dim: int = 10,
-                 optimizer: str = "adam",
-                 enc_ac_fn: str = "relu",
-                 mt_ac_fn: str = "relu",
-                 embed_agent_value: str = "known",
-                 embed_agent_size: int = None,
-                 bvp_pipeline: bool = False,
-                 bvp_agg: str = None,
-                 ui: str = "tqdm",
-                 checkpoint_dir: Path = Path("../../checkpoints/"),
-                 data_dir: Path = Path("../../data/"),
-                 small_dataset: bool = True,
-                 transformation: str = None,
-                 is_debug: bool = False,
-                 on_cpu: bool = False,
-                 config: dict[str, any] = None):
+def run_training(config: dict[str, dict[str, any]]):
     """Runs the training.
 
-    Args:
-        batch_size: The batch size to use for training.
-        lr: The learning rate to use for training.
-        epochs: The number of epochs to train for.
-        alpha: The alpha value to use for the Triple loss.
-        beta: The beta value to use for the Triple loss.
-        dropout: The dropout rate to use for the VAE.
-        latent_dim: Size of the latent embedding produced by the encoder.
-        optimizer: The optimizer to use for training. Options are [`adam`,
-            `sgd`]
-        enc_ac_fn: The activation function to use for the encoder as a str.
-            Options are [`relu`, `leaky`, `selu`].
-        mt_ac_fn: The activation function to use for the MT heads as a str.
-            Options are [`relu`, `leaky`, `selu`].
-        embed_agent_value: The type of embedding agent to used. Options are
-            [`known`, `one-hot`, `probability`].
-        embed_agent_size: The size of the embedding provided by the embedding
-            agent. If embed_agent_value is `known`, this value is ignored.
-        bvp_pipeline: Whether the signal-processing pipeline should be replaced
-            with simply providing the pre-calculated BVP.
-        bvp_agg: Aggregation method for BVP. Options are [`stack`, `1d`, `sum`].
-        ui: The UI to use for training. Can be "tqdm" or "gui".
-        checkpoint_dir: The dir to save the checkpoints to.
-        data_dir: The dir to the data to use for training.
-        small_dataset: Whether to use the small version of the dataset.
-        transformation: The signal-to-image transformation to apply during
-            this training run. Options are ["deepinsight", "gaf", "mtf", "rp"].
-        is_debug: Whether to consider this run a debugging run. Appends the
-            "debug" tag to the list of tags when uploading to WandB
-        config: The yaml configuration as a dict.
     """
     # SECTION Initial stuff
-    if embed_agent_size is None and embed_agent_value != "known":
-        raise ValueError("A value must be provided for parameter "
-                         f"embed_agent_size if "
-                         f"embed_agent_value={embed_agent_value}.")
-
-    if (bvp_agg is not None) and (bvp_agg not in ("stack", "1d", "sum")):
-        raise ValueError(f"Parameter bvp_agg is {bvp_agg} but must be one of"
-                         f"[`stack`, `1d`, `sum`].")
+    is_debug = config["debug"]["is_debug"]
     # Set tags
-    if transformation is None:
-        if bvp_pipeline:
+    if config["data"]["transformation"] is None:
+        if config["train"]["bvp_pipeline"]:
             transformation = "bvp_pipeline"
         else:
             transformation = "no_transform"
+    else:
+        transformation = config["data"]["transformation"]
     tags = [transformation, "training"]
-    if is_debug:
+    if config["debug"]["is_debug"]:
         warnings.warn("Running a debug run, `debug` will be appended to tags.")
         tags.append("debug")
 
@@ -144,11 +83,11 @@ def run_training(batch_size: int = 64,
     run = wandb.init(project="master-thesis", entity="yvan674",
                      config=config, tags=tags)
     # Validate checkpoints dir
-    if not checkpoint_dir.exists():
-        checkpoint_dir.mkdir(parents=True)
+    if not config["train"]["checkpoint_dir"].exists():
+        config["train"]["checkpoint_dir"].mkdir(parents=True)
 
     # Set device
-    if on_cpu:
+    if config["debug"]["on_cpu"]:
         # Debugging on CPU is easier
         device = torch.device("cpu")
     elif torch.cuda.is_available():
@@ -159,6 +98,10 @@ def run_training(batch_size: int = 64,
         device = torch.device("cpu")
 
     # SECTION Data
+    data_dir = config["data"]["data_dir"]
+    bvp_pipeline = config["train"]["bvp_pipeline"]
+    bvp_agg = config["data"]["bvp_agg"]
+    small_dataset = config["data"]["small_dataset"]
     # Set up the pipeline
     if bvp_pipeline:
         warnings.warn("Running with bvp_pipeline=True; no transformation will "
@@ -182,16 +125,15 @@ def run_training(batch_size: int = 64,
                     f"valid options. Valid options are "
                     f"[`deepinsight`, `gaf`, `mtf`, `rp`]"
                 )
-        amp_pipeline = Pipeline([LowPassFilter(250, 1000),
-                                 StandardScaler(data_dir, "amp"),
-                                 transform,
-                                 torch.from_numpy])
-        phase_pipeline = Pipeline([PhaseUnwrap(),
-                                   PhaseFilter([3, 3, 1], [3, 3, 1]),
-                                   LowPassFilter(250, 1000),
-                                   StandardScaler(data_dir, "phase"),
-                                   transform,
-                                   torch.from_numpy])
+
+        amp_pipeline = Pipeline.from_str_list(
+            config["data"]["amp_pipeline"],
+            transform
+        )
+        phase_pipeline = Pipeline.from_str_list(
+            config["data"]["phase_pipeline"],
+            transform
+        )
 
     train_dataset = WidarDataset(data_dir,
                                  "train",
@@ -213,11 +155,11 @@ def run_training(batch_size: int = 64,
     # 1 worker ensure no multithreading so we can debug easily
     num_workers = 1 if is_debug else (torch.get_num_threads() - 2) // 2
     train_dataloader = DataLoader(train_dataset,
-                                  batch_size,
+                                  config["train"]["batch_size"],
                                   num_workers=num_workers,
                                   collate_fn=widar_collate_fn)
     valid_dataloader = DataLoader(valid_dataset,
-                                  batch_size,
+                                  config["train"]["batch_size"],
                                   num_workers=num_workers,
                                   collate_fn=widar_collate_fn)
 
@@ -226,15 +168,21 @@ def run_training(batch_size: int = 64,
     activation_fn_map = {"relu": nn.ReLU,
                          "leaky": nn.LeakyReLU,
                          "selu": nn.SELU}
-    enc_ac_fn = activation_fn_map[enc_ac_fn]
-    mt_ac_fn = activation_fn_map[mt_ac_fn]
+    enc_ac_fn = activation_fn_map[config["encoder"]["activation_fn"]]
+    mt_dec_ac_fn = activation_fn_map[config["mt"]["decoder_activation_fn"]]
+    mt_pred_ac_fn = activation_fn_map[config["mt"]["predictor_activation_fn"]]
+
+
 
     # VAE based model
     # this is hard coded. There are 33 possible domain factors if the domain
     # factors that are in the ground-truth data is encoded in one-hot.
     # If embed_agent_size is None, we assume we want to use the ground-truth
     # domain factors
-    domain_embedding_size = 33 if embed_agent_size is None else embed_agent_size
+    if config["embed"]["embed_agent_size"] is not None:
+        domain_embedding_size = config["embed"]["embed_agent_size"]
+    else:
+        domain_embedding_size = 33
 
     # Encoder set up
     if not bvp_pipeline:
@@ -245,24 +193,41 @@ def run_training(batch_size: int = 64,
     fc_input_size = CONV_NUM_FEATURES_MAPS[input_type]
 
     if bvp_pipeline:
-        encoder = BVPEncoder(enc_ac_fn, dropout, latent_dim, fc_input_size,
+        encoder = BVPEncoder(enc_ac_fn,
+                             config["encoder"]["dropout"],
+                             config["encoder"]["latent_dim"],
+                             fc_input_size,
                              input_features)
-        mt_head_input_dim = latent_dim
+        mt_head_input_dim = config["encoder"]["latent_dim"]
     else:
-        encoder = AmpPhaseEncoder(enc_ac_fn, dropout, latent_dim, fc_input_size,
+        encoder = AmpPhaseEncoder(enc_ac_fn,
+                                  config["encoder"]["dropout"],
+                                  config["encoder"]["latent_dim"],
+                                  fc_input_size,
                                   input_features)
-        mt_head_input_dim = 2 * latent_dim
+        mt_head_input_dim = 2 * config["encoder"]["latent_dim"]
 
-    null_head = MultiTaskHead(mt_ac_fn, dropout, mt_head_input_dim, mt_ac_fn,
-                              dropout, domain_embedding_size)
-
-    embed_head = MultiTaskHead(mt_ac_fn, dropout, mt_head_input_dim, mt_ac_fn,
-                               dropout, domain_embedding_size)
+    null_head = MultiTaskHead(mt_dec_ac_fn,
+                              config["mt"]["decoder_dropout"],
+                              mt_head_input_dim,
+                              mt_pred_ac_fn,
+                              config["mt"]["predictor_dropout"],
+                              domain_embedding_size)
+    embed_head = MultiTaskHead(mt_dec_ac_fn,
+                               config["mt"]["decoder_dropout"],
+                               mt_head_input_dim,
+                               mt_pred_ac_fn,
+                               config["mt"]["predictor_dropout"],
+                               domain_embedding_size)
 
     # Embedding agents
-    null_value = 0. if embed_agent_value in ("known", "one-hot") else None
+    if config["embed"]["embed_agent_value"] in ("known", "one-hot"):
+        null_value = 0.
+    else:
+        null_value = None
+
     null_agent = NullAgent(domain_embedding_size, null_value)
-    if embed_agent_value == "known":
+    if config["embed"]["embed_agent_value"] == "known":
         embed_agent = KnownDomainAgent()
     else:
         raise NotImplementedError("Actual RL agent is not yet implemented.")
@@ -275,8 +240,12 @@ def run_training(batch_size: int = 64,
     embed_agent.to(device)
 
     # Loss and optimizers
-    loss_fn = TripleLoss(alpha, beta)
+    optimizer = config["optim_loss"]["optimizer"]
+    lr = config["optim_loss"]["lr"]
+    loss_fn = TripleLoss(config["optim_loss"]["alpha"],
+                         config["optim_loss"]["beta"])
     optimizer_map = {"adam": Adam, "sgd": SGD}
+
     encoder_optimizer = optimizer_map[optimizer](encoder.parameters(), lr=lr)
     null_optimizer = optimizer_map[optimizer](null_head.parameters(), lr=lr)
     embed_optimizer = optimizer_map[optimizer](embed_head.parameters(), lr=lr)
@@ -292,23 +261,25 @@ def run_training(batch_size: int = 64,
                     "batch": "0",
                     "rate": float("nan")}
     train_steps = len(train_dataset)
-    if embed_agent_value != "known":
+    if config["embed"]["embed_agent_value"] != "known":
         # Then we're training the embedding agent as well, so we go through
         # the train dataset twice
         train_steps *= 2
-    match ui:
+    match config["train"]["ui"]:
         case "tqdm":
-            ui = TqdmUI(train_steps, len(valid_dataset), epochs,
-                        initial_data)
+            ui = TqdmUI(train_steps, len(valid_dataset),
+                        config["train"]["epochs"], initial_data)
         case "gui":
             raise NotImplementedError("GUI has not been implemented yet.")
         case _:
-            raise ValueError(f"{ui} is not one of the available options."
+            raise ValueError(f"{config['train']['ui']} is not one of the "
+                             f"available options."
                              f"Available options are [`tqdm`, `gui`]")
 
     ui.update_status("Preparation complete. Starting training...")
 
     # SECTION Run training
+    checkpoint_dir = config["train"]["checkpoint_dir"]
     training = Training(
         bvp_pipeline,                                         # BVP Pipeline
         encoder, null_head, embed_head,                       # Models
@@ -317,15 +288,15 @@ def run_training(batch_size: int = 64,
         loss_fn,                                              # Loss function
         run, checkpoint_dir, ui                               # Utils
     )
-
-    training.train(train_embedding_agent=embed_agent_value != "known",
+    train_embedding_agent = config["embed"]["embed_agent_value"] != "known"
+    training.train(train_embedding_agent=train_embedding_agent,
                    train_loader=train_dataloader,
                    valid_loader=valid_dataloader,
-                   epochs=epochs,
+                   epochs=config["train"]["epochs"],
                    device=device)
 
 
 if __name__ == '__main__':
     args = parse_args()
     conf = parse_config_file(args.CONFIG_FP)["train_config"]
-    run_training(**conf, config=conf)
+    run_training(config=conf)
