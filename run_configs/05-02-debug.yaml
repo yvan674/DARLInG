@@ -1,17 +1,20 @@
-train_config:
+train:
   batch_size: 64
-  lr: 0.001
-  epochs: 1
-  alpha: 0.5
-  dropout: 0.3
-  latent_dim: 18
-  optimizer: "adam"
-  enc_ac_fn: "relu"
-  mt_ac_fn: "relu"
-  embed_agent_value: "known"
-  embed_agent_size: null
-  bvp_pipeline: true
-  bvp_agg: "sum"
+  epochs: 2
   ui: "tqdm"
+  bvp_pipeline: true
+
+data:
+  small_dataset: true
+  downsample_multiplier: 2
+  bvp_agg: "stack"
+
+encoder:
+  latent_dim: 18
+
+optim_loss:
+  optimizer: "sgd"
+
+debug:
   is_debug: true
   on_cpu: true
