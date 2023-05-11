@@ -51,12 +51,15 @@ class Pipeline(SignalProcessor):
                       transform: Union[SignalProcessor,
                                        SignalToImageTransformer,
                                        callable],
-                      standard_scaler: StandardScaler):
+                      standard_scaler: StandardScaler,
+                      downsample_multiplier: int):
         processors = []
         for s in str_list:
             match s:
                 case "lowpass_filter":
-                    processors.append(LowPassFilter(250, 1000))
+                    processors.append(LowPassFilter(
+                        250, 1000 // downsample_multiplier
+                    ))
                 case "phase_derivative":
                     processors.append(PhaseDerivative())
                 case "phase_filter":

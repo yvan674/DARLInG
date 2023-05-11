@@ -126,30 +126,38 @@ def run_training(config: dict[str, dict[str, any]]):
         amp_pipeline = Pipeline.from_str_list(
             config["data"]["amp_pipeline"],
             transform,
-            StandardScaler(config["data"]["data_dir"], "amp")
+            StandardScaler(config["data"]["data_dir"], "amp"),
+            config["data"]["downsample_multiplier"]
         )
         phase_pipeline = Pipeline.from_str_list(
             config["data"]["phase_pipeline"],
             transform,
-            StandardScaler(config["data"]["data_dir"], "phase")
+            StandardScaler(config["data"]["data_dir"], "phase"),
+            config["data"]["downsample_multiplier"]
         )
 
-    train_dataset = WidarDataset(data_dir,
-                                 "train",
-                                 small_dataset,
-                                 amp_pipeline=amp_pipeline,
-                                 phase_pipeline=phase_pipeline,
-                                 return_csi=not bvp_pipeline,
-                                 return_bvp=True,
-                                 bvp_agg=bvp_agg)
-    valid_dataset = WidarDataset(data_dir,
-                                 "validation",
-                                 small_dataset,
-                                 amp_pipeline=amp_pipeline,
-                                 phase_pipeline=phase_pipeline,
-                                 return_csi=not bvp_pipeline,
-                                 return_bvp=True,
-                                 bvp_agg=bvp_agg)
+    train_dataset = WidarDataset(
+        data_dir,
+        "train",
+        small_dataset,
+        downsample_multiplier=config["data"]["downsample_multiplier"],
+        amp_pipeline=amp_pipeline,
+        phase_pipeline=phase_pipeline,
+        return_csi=not bvp_pipeline,
+        return_bvp=True,
+        bvp_agg=bvp_agg
+    )
+    valid_dataset = WidarDataset(
+        data_dir,
+        "validation",
+        small_dataset,
+        downsample_multiplier=config["data"]["downsample_multiplier"],
+        amp_pipeline=amp_pipeline,
+        phase_pipeline=phase_pipeline,
+        return_csi=not bvp_pipeline,
+        return_bvp=True,
+        bvp_agg=bvp_agg
+    )
 
     # 1 worker ensure no multithreading so we can debug easily
     num_workers = 1 if is_debug else (torch.get_num_threads() - 2) // 2
