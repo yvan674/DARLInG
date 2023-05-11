@@ -31,4 +31,4 @@ def tensor_to_image(data: torch.Tensor, img_idxs: tuple,
         img.putpalette(palette)
         imgs.append(img.convert(mode="RGB"))
 
-    return img_arrays
+    return imgs

@@ -64,7 +64,6 @@ class TripleLoss(nn.Module):
             kl_loss = torch.tensor([0], dtype=torch.float32,
                                    device=self.device)
         else:
-            # TODO figure out normalization here
             # Reshape mus and log_sigmas to be flat
             mus = mu.reshape(-1)
             log_sigmas = log_sigma.reshape(-1)
