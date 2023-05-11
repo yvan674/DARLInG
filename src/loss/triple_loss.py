@@ -5,8 +5,6 @@ Loss function combining KL Divergence, Reconstruction, and Classification loss.
 Author:
     Yvan Satyawan
 """
-import math
-
 import torch
 import torch.nn as nn
 
@@ -66,11 +64,12 @@ class TripleLoss(nn.Module):
             kl_loss = torch.tensor([0], dtype=torch.float32,
                                    device=self.device)
         else:
+            # TODO figure out normalization here
             # Reshape mus and log_sigmas to be flat
             mus = mu.reshape(-1)
             log_sigmas = log_sigma.reshape(-1)
             a = 2 * log_sigmas
-            kl_loss = (0.5 * torch.sum(mus * mus + a.exp() - a - 1))
+            kl_loss = (torch.sum(mus * mus + a.exp() - a - 1) / len(mu))
 
         # Calculate the reconstruction loss using MSE
         null_loss = self.mse(bvp_null, bvp)
