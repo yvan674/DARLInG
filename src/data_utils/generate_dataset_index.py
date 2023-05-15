@@ -58,7 +58,9 @@ def parse_args() -> Namespace:
     p.add_argument("DATA_FP", type=Path,
                    help="Path to the Widar3.0 dataset.")
     p.add_argument("-n", "--num_repetitions", type=int, nargs="?", default=None,
-                   help="Number of repetitions to choose for each sample")
+                   help="Number of repetitions to choose for each sample."
+                        "Giving none will result in a full dataset index being"
+                        "generated.")
 
     return p.parse_args()
 
@@ -126,7 +128,7 @@ def parse_files(widar_dir: Path, num_repetitions: int | None):
         glob_str = f"user[{user_str}]/user[{user_str}]-[{gesture_str}]" \
                    f"-[{torso_str}]-?-*"
 
-        for date_dir in tqdm(date_dirs, desc=f"Reading files for {split_name}"):
+        for date_dir in tqdm(date_dirs, desc=f"Reading dirs for {split_name}"):
             matching_files = date_dir.glob(glob_str)
             for file in matching_files:
                 file_data = file.stem[4:-3].split("-")[:-1]
@@ -172,7 +174,7 @@ def parse_files(widar_dir: Path, num_repetitions: int | None):
             if len(bvp_paths) != len(chosen_files):
                 keys_to_del.append(key)
             else:
-                user_str = f"user{sample_records[key]['user']}"
+                user_str = f"user{sample_records[key]['user'] + 1}"
                 file_dir = csi_dir / sample_records[key]["date"] / user_str
                 repetitions = len(sample_records[key]["csi_stems"])
                 sample_records[key]["repetitions"] = repetitions
