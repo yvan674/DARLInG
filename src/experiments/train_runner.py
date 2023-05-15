@@ -27,7 +27,7 @@ from models.known_domain_agent import KnownDomainAgent
 from loss.triple_loss import TripleLoss
 from signal_processing.pipeline import Pipeline
 from signal_processing.standard_scaler import StandardScaler
-from signal_to_image.deepinsight_transform import DeepInsight
+# from signal_to_image.deepinsight_transform import DeepInsight
 from signal_to_image.gaf_transform import GAF
 from signal_to_image.mtf_transform import MTF
 from signal_to_image.recurrence_plot_transform import RP
