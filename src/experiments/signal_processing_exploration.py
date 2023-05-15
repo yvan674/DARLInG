@@ -27,7 +27,6 @@ from signal_processing.phase_derivative import PhaseDerivative
 from signal_processing.standard_scaler import StandardScaler
 
 
-
 if __name__ == '__main__':
     data = WidarDataset(Path("../../data/"), "train", True)
     x_amp = data[0][0]
