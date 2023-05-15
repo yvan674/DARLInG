@@ -348,6 +348,7 @@ class Training:
         del bvp
         del bvp_null
         del bvp_embed
+        plt.close("all")
 
         return joint_losses
 
