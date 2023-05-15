@@ -202,7 +202,7 @@ class Training:
                 )
 
             current_time = perf_counter()
-            rate = 1 / (current_time - start_time)
+            rate = len(info["user"]) / (current_time - start_time)
 
             self.ui.update_data(
                 {"train_loss": joint_loss_value,
@@ -236,9 +236,11 @@ class Training:
                                                 loss_diff)
             current_time = perf_counter()
             self.logging.log(log_dict, self.step)
-            self.ui.update_data({"loss_diff": loss_diff,
-                                 "rate": 1 / (current_time - start_time),
-                                 "epoch": epoch})
+            self.ui.update_data({
+                "loss_diff": loss_diff,
+                "rate": len(info["user"]) / (current_time - start_time),
+                "epoch": epoch
+            })
             self.ui.step(len(info["user"]))
 
     def _validate_holistic(self, valid_loader: DataLoader, device,
@@ -287,7 +289,7 @@ class Training:
             gesture_embed_preds.append(pass_result["gesture_embed"])
 
             current_time = perf_counter()
-            rate = 1 / (current_time - start_time)
+            rate = len(info["user"]) / (current_time - start_time)
             self.ui.update_data(
                 {"valid_loss": joint_loss_value,
                  "loss_diff": embed_loss_value - null_loss_value,
