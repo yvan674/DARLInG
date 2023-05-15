@@ -3,7 +3,7 @@
 
 train:
   batch_size: 64
-  epochs: 50
+  epochs: 500
   ui: tqdm
   checkpoint_dir: "../../checkpoints/"
   bvp_pipeline: true
