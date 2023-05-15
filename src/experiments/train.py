@@ -313,7 +313,7 @@ class Training:
         gesture_embed_preds = gesture_embed_preds.to(torch.device("cpu"))
 
         # Calculate metrics over entire validation set
-        joint_losses = np.mean(np.array(joint_losses))
+        joint_losses = np.mean(np.array(joint_losses)).item()
         log_dict = {
             "valid_kl_loss": np.mean(np.array(kl_losses)),
             "valid_joint_loss": joint_losses,
@@ -350,7 +350,6 @@ class Training:
         del bvp_embed
 
         return joint_losses
-
 
     def _visualize_and_set_images(self,
                                   bvp: torch.Tensor,
