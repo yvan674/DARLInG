@@ -178,12 +178,15 @@ class Training:
                                 + embed_loss_value)
             loss_diff = embed_loss_value - null_loss_value
 
+            loss_vals = {
+                "train_loss": joint_loss_value.item(),
+                "train_kl_loss": kl_loss_value.item(),
+                "train_null_loss": null_loss_value.item(),
+                "train_embed_loss": embed_loss_value.item(),
+                "train_loss_diff": loss_diff.item(),
+            }
+
             log_dict = {
-                "train_loss": joint_loss_value,
-                "train_kl_loss": kl_loss_value,
-                "train_null_loss": null_loss_value,
-                "train_embed_loss": embed_loss_value,
-                "train_loss_diff": loss_diff,
                 "train_mus": wandb.Histogram(pass_result["mu"].mean(dim=0)
                                              .detach()
                                              .cpu()),
@@ -193,27 +196,22 @@ class Training:
                     .cpu()
                 )
             }
+            log_dict.update(**loss_vals)
 
             # Add images every 50 batches.
             if batch_idx % 50 == 0:
-                log_dict = self._visualize_and_set_images(
+                log_dict.update(**self._visualize_and_set_images(
                     bvp, pass_result["bvp_null"], pass_result["bvp_embed"],
-                    log_dict, "train"
-                )
+                    "train"
+                ))
 
             current_time = perf_counter()
             rate = len(info["user"]) / (current_time - start_time)
 
-            self.ui.update_data(
-                {"train_loss": joint_loss_value,
-                 "train_kl_loss": kl_loss_value,
-                 "train_null_loss": null_loss_value,
-                 "train_embed_loss": embed_loss_value,
-                 "loss_diff": loss_diff,
-                 "epoch": epoch,
-                 "batch": batch_idx,
-                 "rate": rate}
-            )
+            ui_data = {"epoch": epoch, "batch": batch_idx, "rate": rate}
+            ui_data.update(**loss_vals)
+
+            self.ui.update_data(ui_data)
             self.logging.log(log_dict, self.step)
             self.ui.step(len(info["user"]))
 
@@ -331,11 +329,9 @@ class Training:
                                                       gesture_embed_preds)
         }
 
-        log_dict = self._visualize_and_set_images(bvp,
-                                                  bvp_null,
-                                                  bvp_embed,
-                                                  log_dict,
-                                                  "valid")
+        log_dict.update(**self._visualize_and_set_images(bvp,
+                                                         bvp_null,
+                                                         bvp_embed, "valid"))
 
         self.logging.log(log_dict, step=self.step)
 
@@ -356,7 +352,6 @@ class Training:
                                   bvp: torch.Tensor,
                                   bvp_null: torch.Tensor,
                                   bvp_embed: torch.Tensor,
-                                  log_dict: dict[str, any],
                                   log_prefix: str) -> dict[str, any]:
         """Visualize BVPs and puts it in the log_dict and on WandB.
 
@@ -364,28 +359,28 @@ class Training:
             bvp: Ground truth BVP tensor.
             bvp_null: BVP predicted by null MT head.
             bvp_embed: BVP predicted by embed MT head.
-            log_dict: The log dictionary currently being used
             log_prefix: Entry prefix to add in the log dict. Usually `train` or
                 `valid`.
         """
+        img_dict = {}
         original_imgs = tensor_to_image(bvp, (0, 3), self.color_palette)
         null_reconstr_imgs = tensor_to_image(bvp_null, (0, 3),
                                              self.color_palette)
         embed_reconstr_imgs = tensor_to_image(bvp_embed, (0, 3),
                                               self.color_palette)
 
-        log_dict[f"{log_prefix}_bvp"] = [wandb.Image(i)
+        img_dict[f"{log_prefix}_bvp"] = [wandb.Image(i)
                                          for i in original_imgs]
-        log_dict[f"{log_prefix}_bvp_null"] = [wandb.Image(i)
+        img_dict[f"{log_prefix}_bvp_null"] = [wandb.Image(i)
                                               for i in null_reconstr_imgs]
-        log_dict[f"{log_prefix}_bvp_embed"] = [wandb.Image(i)
+        img_dict[f"{log_prefix}_bvp_embed"] = [wandb.Image(i)
                                                for i in embed_reconstr_imgs]
 
         self.ui.update_image(original_imgs[0],
                              null_reconstr_imgs[0],
                              embed_reconstr_imgs[0])
 
-        return log_dict
+        return img_dict
 
     def _conf_matrix(self, gesture_gt, gesture_pred):
         """Generates a conf-matrix plot"""
