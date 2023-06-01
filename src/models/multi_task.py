@@ -15,12 +15,13 @@ class Decoder(nn.Module):
                  conv_ac_func: nn.Module = nn.ReLU,
                  dropout: float = 0.3,
                  latent_dim: int = 10,
-                 output_layers: int = 1):
+                 output_layers: int = 1,
+                 output_size: int = 20):
         """Decoder from a VAE.
-
-        Author:
         """
         super(Decoder, self).__init__()
+
+        self.output_size = output_size
 
         def conv_block_decoder(in_channels, out_channels):
             return nn.Sequential(
@@ -48,8 +49,8 @@ class Decoder(nn.Module):
         result = self.decoder_input(z)
         result = result.reshape((-1, 512, 4, 4))
         x_reconstr = self.convnet_decoder(result)
-        # Image is now 32x32, we need to make it 20x20
-        x_reconstr = F.interpolate(x_reconstr, size=20)
+        # Image is now 32x32, we need to make it whatever size is required.
+        x_reconstr = F.interpolate(x_reconstr, size=self.output_size)
         return x_reconstr
 
 
@@ -90,7 +91,9 @@ class MultiTaskHead(nn.Module):
                  predictor_ac_func: nn.Module,
                  predictor_dropout: float,
                  domain_label_size: int,
-                 output_layers: int):
+                 bvp_output_layers: int,
+                 bvp_output_size: int = 20,
+                 num_classes: int = 6):
         """Multi Task Prediction Head.
 
         Args:
@@ -109,10 +112,12 @@ class MultiTaskHead(nn.Module):
         self.decoder = Decoder(decoder_ac_func,
                                decoder_dropout,
                                in_features,
-                               output_layers)
+                               bvp_output_layers,
+                               bvp_output_size)
         self.predictor = GesturePredictor(predictor_ac_func,
                                           predictor_dropout,
-                                          in_features=in_features)
+                                          in_features=in_features,
+                                          num_classes=num_classes)
 
     def forward(self, z):
         y_bvp = self.decoder(z)

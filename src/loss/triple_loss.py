@@ -10,7 +10,7 @@ import torch.nn as nn
 
 
 class TripleLoss(nn.Module):
-    def __init__(self, alpha, beta):
+    def __init__(self, alpha: float, beta: float):
         """Combination of KL, Reconstruction, and Classification Loss.
 
         The ratio between reconstruction and classification is defined by
