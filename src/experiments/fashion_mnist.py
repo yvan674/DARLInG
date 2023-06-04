@@ -23,13 +23,13 @@ import numpy as np
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
-from torch.optim import SGD, Optimizer
+from torch.optim import Adam, Optimizer
 from torchvision.datasets import FashionMNIST
 from tqdm import tqdm
 
 from models.encoder import BVPEncoder
 from models.multi_task import MultiTaskHead
-from loss.triple_loss import TripleLoss
+from loss.elbo_classification_loss import ELBOClassificationLoss
 from ui.vae_experiment_gui import TrainingGUI
 
 
@@ -38,8 +38,6 @@ def parse_args():
     p = ArgumentParser()
     p.add_argument("DATA_ROOT", type=Path,
                    help="Path to the FashionMNIST dataset")
-    p.add_argument("CHECKPOINT_ROOT", type=Path,
-                   help="Path to the checkpoints")
     p.add_argument("--debug", action="store_true",
                    help="Activates debug mode (CPU and single threaded)")
     return p.parse_args()
@@ -93,8 +91,7 @@ def train_loop(encoder: nn.Module,
                head_optimizer: Optimizer,
                dataloader: DataLoader,
                epochs: int,
-               device: torch.device,
-               checkpoint_path: Path):
+               device: torch.device):
     gui = TrainingGUI(0)
     gui.set_max_values(len(dataloader), epochs)
     gui.update_status("Beginning training...")
@@ -124,10 +121,9 @@ def train_loop(encoder: nn.Module,
             reconst, y_pred = head(z)
 
             # Calculate loss
-            loss_val = loss(imgs, label, mu, log_sigma, reconst, y_pred,
-                            reconst, y_pred,
-                            False, False)
-            kl_loss, null_loss, embed_loss, joint_loss = loss_val
+            elbo_loss, class_loss, joint_loss = loss(
+                imgs, reconst, y_pred, label, mu, log_sigma
+            )
 
             joint_loss.backward()
             encoder_optimizer.step()
@@ -143,11 +139,11 @@ def train_loop(encoder: nn.Module,
             current_time = perf_counter()
             rate = 1 / (current_time - prev_time)
             prev_time = current_time
-            gui.update_data(batch_idx + 1, epoch + 1, kl_loss, joint_loss,
+            gui.update_data(batch_idx + 1, epoch + 1, elbo_loss, class_loss,
                             rate)
 
 
-def main(data_root: Path, checkpoint_root: Path, debug_mode: bool):
+def main(data_root: Path, debug_mode: bool):
     """Sets up the main training loop."""
     if debug_mode:
         device = torch.device("cpu")
@@ -173,12 +169,12 @@ def main(data_root: Path, checkpoint_root: Path, debug_mode: bool):
                              batch_size=64, shuffle=True)
 
     # SECTION: Model initialization
-    encoder = BVPEncoder(fc_input_size=8192)
+    encoder = BVPEncoder(fc_input_size=8192, dropout=0.4)
     head = MultiTaskHead(decoder_ac_func=nn.ReLU,
-                         decoder_dropout=0.3,
+                         decoder_dropout=0.4,
                          encoder_latent_dim=10,
                          predictor_ac_func=nn.ReLU,
-                         predictor_dropout=0.3,
+                         predictor_dropout=0.4,
                          domain_label_size=0,
                          bvp_output_layers=1,
                          bvp_output_size=28,
@@ -188,14 +184,14 @@ def main(data_root: Path, checkpoint_root: Path, debug_mode: bool):
     head.to(device)
 
     # SECTION: Loss and optimizers
-    loss_fn = TripleLoss(1.0, 0.5)
-    encoder_optimizer = SGD(encoder.parameters(), lr=1e-4)
-    head_optimizer = SGD(head.parameters(), lr=1e-4)
+    loss_fn = ELBOClassificationLoss(0.99)
+    encoder_optimizer = Adam(encoder.parameters(), lr=0.001)
+    head_optimizer = Adam(head.parameters(), lr=0.01)
 
     train_loop(encoder, head, loss_fn, encoder_optimizer, head_optimizer,
-               train_loader, 10, device, checkpoint_root)
+               train_loader, 10, device)
 
 
 if __name__ == '__main__':
     args = parse_args()
-    main(args.DATA_ROOT, args.CHECKPOINT_ROOT, args.debug)
+    main(args.DATA_ROOT, args.debug)

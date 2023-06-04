@@ -89,23 +89,19 @@ class Encoder(nn.Module):
                                      conv_block(256, 512),
                                      nn.Flatten())
 
-        self.fc = nn.Linear(fc_input_size, 8192)
+        # self.fc = nn.Linear(fc_input_size, 8192)
 
-        self.fc_mu = nn.Linear(8192, latent_dim)
+        self.fc_mu = nn.Linear(fc_input_size, latent_dim)
         self.fc_sigma = nn.Linear(8192, latent_dim)
 
     def forward(self, x):
-        """Forward pass.
-
-        We include the bvp parameter in this method, since we also use this
-        encoder to encode the BVP data.
-        """
+        """Forward pass. """
         h = self.convnet(x)
-        h = self.fc(h)
+        # h = self.fc(h)
         mu = self.fc_mu(h)
         log_sigma = self.fc_sigma(h)
-
         z = self.reparameterization(mu, log_sigma)
+
         return z, mu, log_sigma
 
     @staticmethod
