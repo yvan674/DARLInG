@@ -19,7 +19,7 @@ from wandb.wandb_run import Run
 
 from ui.base_ui import BaseUI
 from models.base_embedding_agent import BaseEmbeddingAgent
-from loss.triple_loss import TripleLoss
+from loss.triple_loss import MultiJointLoss
 from utils.colors import colorcet_to_image_palette
 from utils.images import tensor_to_image
 
@@ -35,7 +35,7 @@ class Training:
                  encoder_optimizer: Optimizer,
                  null_head_optimizer: Optimizer,
                  embed_head_optimizer: Optimizer,
-                 loss_func: TripleLoss,
+                 loss_func: MultiJointLoss,
                  logging: Run,
                  checkpoint_dir: Path,
                  ui: BaseUI,
