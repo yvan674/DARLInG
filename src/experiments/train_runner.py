@@ -161,7 +161,10 @@ def run_training(config: dict[str, dict[str, any]]):
     )
 
     # 1 worker ensure no multithreading so we can debug easily
-    num_workers = 1 if is_debug else (torch.get_num_threads() - 2) // 2
+    # num_workers = 1 if is_debug else (torch.get_num_threads() - 2) // 2
+    # Trying to get a process lock for the dataloader takes way too long if
+    # num_workers > 1 (~3x longer) so we set num_workers to always be 1
+    num_workers = 1
     train_dataloader = DataLoader(train_dataset,
                                   config["train"]["batch_size"],
                                   num_workers=num_workers,
