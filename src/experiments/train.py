@@ -205,7 +205,7 @@ class Training:
                 ))
 
             current_time = perf_counter()
-            rate = (current_time - start_time) / len(info["user"])
+            rate = len(info["user"]) / (current_time - start_time)
 
             ui_data = {"epoch": epoch, "batch": batch_idx, "rate": rate}
             ui_data.update(**loss_vals)
@@ -233,7 +233,7 @@ class Training:
             self.logging.log(log_dict, self.step)
             self.ui.update_data({
                 "loss_diff": loss_diff,
-                "rate": (current_time - start_time) / len(info["user"]),
+                "rate": len(info["user"]) / (current_time - start_time),
                 "epoch": epoch
             })
             self.ui.step(len(info["user"]))
@@ -280,7 +280,7 @@ class Training:
             gesture_embed_preds.append(pass_result["gesture_embed"])
 
             current_time = perf_counter()
-            rate = (current_time - start_time) / len(info["user"])
+            rate = len(info["user"]) / (current_time - start_time)
             self.ui.update_data(
                 {"valid_loss": joint_loss_value,
                  "loss_diff": embed_loss_value - null_loss_value,
