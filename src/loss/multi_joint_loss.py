@@ -28,7 +28,7 @@ class MultiJointLoss(nn.Module):
         """
         super().__init__()
 
-        self.mse = nn.MSELoss(reduction='sum')
+        self.mse = nn.MSELoss(reduction='mean')
         self.ce = nn.CrossEntropyLoss()
         self.alpha = alpha
         self.neg_alpha = 1. - alpha
