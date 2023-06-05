@@ -19,7 +19,7 @@ from wandb.wandb_run import Run
 
 from ui.base_ui import BaseUI
 from models.base_embedding_agent import BaseEmbeddingAgent
-from loss.triple_loss import MultiJointLoss
+from loss.multi_joint_loss import MultiJointLoss
 from utils.colors import colorcet_to_image_palette
 from utils.images import tensor_to_image
 
@@ -97,9 +97,7 @@ class Training:
                       bvp: torch.Tensor,
                       gesture: torch.Tensor,
                       info: list[dict[str, any]],
-                      device: torch.device,
-                      reconstruction_loss_only: bool,
-                      no_kl_loss: bool):
+                      device: torch.device) -> dict[str, torch.Tensor]:
         """Runs a single forward pass of the entire network.
 
         Args:
@@ -107,6 +105,8 @@ class Training:
             phase: Phase shift component of the CSI.
             bvp: Ground truth BVP from the dataset.
             gesture: Gesture ground-truths for a given batch.
+            info: Info dictionary from the dataset.
+            device: Device to train on.
         """
         gesture = gesture.to(device)
         if self.bvp_pipeline:
@@ -130,10 +130,11 @@ class Training:
         )
 
         # Calculate losses
-        kl_loss, null_loss, embed_loss, joint_loss = self.loss_func(
-            bvp, gesture, mu, log_sigma,
-            bvp_null, gesture_null, bvp_embed, gesture_embed,
-            reconstruction_loss_only, no_kl_loss
+        loss_dict = self.loss_func(
+            bvp, gesture,
+            bvp_null, gesture_null,
+            bvp_embed, gesture_embed,
+            mu, log_sigma
         )
 
         return {"z": z,
@@ -143,10 +144,10 @@ class Training:
                 "gesture_null": gesture_null,
                 "bvp_embed": bvp_embed,
                 "gesture_embed": gesture_embed,
-                "kl_loss": kl_loss,
-                "null_loss": null_loss,
-                "embed_loss": embed_loss,
-                "joint_loss": joint_loss}
+                "elbo_loss": loss_dict["elbo_loss"],
+                "null_loss": loss_dict["null_joint_loss"],
+                "embed_loss": loss_dict["embed_joint_loss"],
+                "joint_loss": loss_dict["joint_loss"]}
 
     def _train_vae(self, train_loader: DataLoader, device: torch.device,
                    epoch: int):
@@ -156,9 +157,7 @@ class Training:
             self.step += 1
             start_time = perf_counter()
             pass_result = self._forward_pass(amp, phase, bvp, info["gesture"],
-                                             info, device,
-                                             reconstruction_loss_only=False,
-                                             no_kl_loss=False)
+                                             info, device)
 
             # Backward pass
             self.encoder_optimizer.zero_grad()
@@ -170,20 +169,20 @@ class Training:
             self.embed_head_optimizer.step()
 
             # Calculate metrics
-            kl_loss_value = pass_result["kl_loss"].data
-            null_loss_value = pass_result["null_loss"].data
-            embed_loss_value = pass_result["embed_loss"].data
-            joint_loss_value = (kl_loss_value
+            elbo_loss_value = pass_result["elbo_loss"].item()
+            null_loss_value = pass_result["null_loss"].item()
+            embed_loss_value = pass_result["embed_loss"].item()
+            joint_loss_value = (elbo_loss_value
                                 + null_loss_value
                                 + embed_loss_value)
             loss_diff = embed_loss_value - null_loss_value
 
             loss_vals = {
-                "train_loss": joint_loss_value.item(),
-                "train_kl_loss": kl_loss_value.item(),
-                "train_null_loss": null_loss_value.item(),
-                "train_embed_loss": embed_loss_value.item(),
-                "train_loss_diff": loss_diff.item(),
+                "train_loss": joint_loss_value,
+                "train_elbo_loss": elbo_loss_value,
+                "train_null_loss": null_loss_value,
+                "train_embed_loss": embed_loss_value,
+                "train_loss_diff": loss_diff,
             }
 
             log_dict = {
@@ -224,11 +223,9 @@ class Training:
             start_time = perf_counter()
 
             pass_result = self._forward_pass(amp, phase, bvp, info["gesture"],
-                                             info, device,
-                                             reconstruction_loss_only=False,
-                                             no_kl_loss=True)
-            loss_diff = (pass_result["embed_loss"].data
-                         - pass_result["null_loss"].data)
+                                             info, device)
+            loss_diff = (pass_result["embed_loss"].item()
+                         - pass_result["null_loss"].item())
             log_dict = {"train_loss_diff": loss_diff}
             self.embedding_agent.process_reward(pass_result["z"],
                                                 loss_diff)
@@ -249,7 +246,7 @@ class Training:
             The average joint loss over the validation run.
         """
         self.ui.update_status("Running validation...")
-        kl_losses = []
+        elbo_losses = []
         joint_losses = []
         bvp_null_losses = []
         bvp_embed_losses = []
@@ -263,25 +260,21 @@ class Training:
         for batch_idx, (amp, phase, bvp, info) in enumerate(valid_loader):
             start_time = perf_counter()
             pass_result = self._forward_pass(amp, phase, bvp, info["gesture"],
-                                             info, device,
-                                             reconstruction_loss_only=True,
-                                             no_kl_loss=False)
+                                             info, device)
 
             # Extract data only from the losses
-            kl_loss_value, null_loss_value, embed_loss_value = [
-                i.data
-                for i in (pass_result["kl_loss"], pass_result["null_loss"],
-                          pass_result["embed_loss"])
-            ]
-            joint_loss_value = (kl_loss_value
+            elbo_loss_value = pass_result["elbo_loss"].item()
+            null_loss_value = pass_result["null_loss"].item()
+            embed_loss_value = pass_result["embed_loss"].item()
+            joint_loss_value = (elbo_loss_value
                                 + null_loss_value
                                 + embed_loss_value)
 
             # Add stuff to lists
-            kl_losses.append(kl_loss_value.item())
-            joint_losses.append(joint_loss_value.item())
-            bvp_null_losses.append(null_loss_value.item())
-            bvp_embed_losses.append(embed_loss_value.item())
+            elbo_losses.append(elbo_loss_value)
+            joint_losses.append(joint_loss_value)
+            bvp_null_losses.append(null_loss_value)
+            bvp_embed_losses.append(embed_loss_value)
             gesture_gts.append(info["gesture"].detach())
             gesture_null_preds.append(pass_result["gesture_null"])
             gesture_embed_preds.append(pass_result["gesture_embed"])
@@ -313,7 +306,7 @@ class Training:
         # Calculate metrics over entire validation set
         joint_losses = np.mean(np.array(joint_losses)).item()
         log_dict = {
-            "valid_kl_loss": np.mean(np.array(kl_losses)),
+            "valid_elbo_loss": np.mean(np.array(elbo_losses)),
             "valid_joint_loss": joint_losses,
             "valid_bvp_null_loss": np.mean(np.array(bvp_null_losses)),
             "valid_bvp_embed_loss": np.mean(np.array(bvp_embed_losses)),
@@ -335,7 +328,7 @@ class Training:
 
         self.logging.log(log_dict, step=self.step)
 
-        del kl_losses
+        del elbo_losses
         del bvp_null_losses
         del bvp_embed_losses
         del gesture_gts

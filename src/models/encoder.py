@@ -92,7 +92,7 @@ class Encoder(nn.Module):
         # self.fc = nn.Linear(fc_input_size, 8192)
 
         self.fc_mu = nn.Linear(fc_input_size, latent_dim)
-        self.fc_sigma = nn.Linear(8192, latent_dim)
+        self.fc_sigma = nn.Linear(fc_input_size, latent_dim)
 
     def forward(self, x):
         """Forward pass. """

@@ -24,7 +24,7 @@ from models.encoder import AmpPhaseEncoder, BVPEncoder
 from models.multi_task import MultiTaskHead
 from models.null_agent import NullAgent
 from models.known_domain_agent import KnownDomainAgent
-from loss.triple_loss import MultiJointLoss
+from loss.multi_joint_loss import MultiJointLoss
 from signal_processing.pipeline import Pipeline
 from signal_processing.standard_scaler import StandardScaler
 # from signal_to_image.deepinsight_transform import DeepInsight
@@ -109,7 +109,8 @@ def run_training(config: dict[str, dict[str, any]]):
         # Set the signal to image transformation to use.
         match transformation:
             case "deepinsight":
-                transform = DeepInsight()
+                raise NotImplementedError
+                # transform = DeepInsight()
             case "gaf":
                 transform = GAF()
             case "mtf":
