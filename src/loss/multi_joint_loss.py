@@ -66,7 +66,7 @@ class MultiJointLoss(nn.Module):
         log_sigmas = log_sigmas.reshape(-1)
         a = 2 * log_sigmas
 
-        kl_loss = (0.5 * torch.sum((mus * mus) + a.exp() - a - 1))
+        kl_loss = (0.5 * torch.mean((mus * mus) + a.exp() - a - 1))
 
         # Given reconstruction and KL, calculate elbo loss
         null_elbo_loss = null_reconstr_loss + kl_loss
