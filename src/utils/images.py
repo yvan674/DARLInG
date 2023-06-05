@@ -19,7 +19,9 @@ def tensor_to_image(data: torch.Tensor, img_idxs: tuple,
     Returns:
         An image in mode "rgb" with the given palette.
     """
-    img_arrays = data[img_idxs[0]:img_idxs[1], 0, :, :] \
+    # We take the 14th image, the "middle" image since there are always
+    # 28 images.
+    img_arrays = data[img_idxs[0]:img_idxs[1], 14, :, :] \
         .detach() \
         .cpu() \
         .numpy() \
