@@ -33,9 +33,9 @@ embed:
   embed_agent_size: null
 
 optim_loss:
-  optimizer: "sgd"
-  lr: 0.00001
-  alpha: 0.5
+  optimizer: "adam"
+  lr: 0.001
+  alpha: 0.01  # from VAE exercise
   beta: 0.5
 
 debug:
