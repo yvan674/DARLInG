@@ -74,6 +74,7 @@ class Encoder(nn.Module):
         its input.
         """
         super(Encoder, self).__init__()
+        self.latent_dim = latent_dim
 
         def conv_block(in_channels, out_channels):
             return nn.Sequential(
