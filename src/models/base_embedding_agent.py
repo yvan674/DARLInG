@@ -44,8 +44,9 @@ class BaseEmbeddingAgent(ABC):
         """Gets whatever should be saved to a state_dict for the agent."""
         raise NotImplementedError
 
+    @staticmethod
     @abstractmethod
-    def load_state_dict(self, sd: dict[any]):
+    def load_state_dict(sd: dict[any]):
         """Loads a model's state from the provided state dictionary."""
         raise NotImplementedError
 

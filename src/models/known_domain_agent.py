@@ -66,7 +66,8 @@ class KnownDomainAgent(BaseEmbeddingAgent):
     def state_dict(self):
         pass
 
-    def load_state_dict(self, sd: dict[any]):
+    @staticmethod
+    def load_state_dict(sd: dict[any]):
         pass
 
     def to(self, device: int | torch.device | None):

@@ -46,7 +46,8 @@ class NullAgent(BaseEmbeddingAgent):
                 "embedding_length": self.embedding_length,
                 "null_value": self.null_value}
 
-    def load_state_dict(self, sd: dict[any]):
+    @staticmethod
+    def load_state_dict(sd: dict[any]):
         self.device = sd["device"]
         self.embedding_length = sd["embedding_length"]
         self.null_value = sd["null_value"]

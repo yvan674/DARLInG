@@ -99,7 +99,8 @@ class PPOAgent(BaseEmbeddingAgent):
                 "output_size": self.output_size,
                 "ppo": self.ppo.state_dict()}
 
-    def load_state_dict(self, sd: dict[any]):
+    @staticmethod
+    def load_state_dict(sd: dict[any]):
         agent = PPOAgent(sd["input_size"], sd["output_size"],
                          lr=sd["lr"],
                          num_steps=sd["num_steps"],
