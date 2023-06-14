@@ -11,14 +11,13 @@ from models.base_embedding_agent import BaseEmbeddingAgent
 
 
 class NullAgent(BaseEmbeddingAgent):
-    def __init__(self, embedding_length: int, null_value: float | None):
-        super().__init__()
+    def __init__(self, domain_embedding_size: int, null_value: float | None):
+        super().__init__(domain_embedding_size=domain_embedding_size)
         self.device = None
-        self.embedding_length = embedding_length
         self.null_value = null_value
 
     def __repr__(self):
-        return f"NullAgent(embedding_length={self.embedding_length}, " \
+        return f"NullAgent(embedding_length={self.domain_embedding_size}, " \
                f"null_value={self.null_value})"
 
     def _produce_action(self, observation: torch.Tensor,
@@ -28,7 +27,7 @@ class NullAgent(BaseEmbeddingAgent):
             fill_value = 1 / batch_size
         else:
             fill_value = self.null_value
-        return torch.full((batch_size, self.embedding_length),
+        return torch.full((batch_size, self.domain_embedding_size),
                           fill_value=fill_value,
                           device=self.device)
 
@@ -43,14 +42,15 @@ class NullAgent(BaseEmbeddingAgent):
 
     def state_dict(self):
         return {"device": self.device,
-                "embedding_length": self.embedding_length,
+                "domain_embedding_size": self.domain_embedding_size,
                 "null_value": self.null_value}
 
     @staticmethod
     def load_state_dict(sd: dict[any]):
-        self.device = sd["device"]
-        self.embedding_length = sd["embedding_length"]
-        self.null_value = sd["null_value"]
+        agent = NullAgent(sd["domain_embedding_size"],
+                          sd["null_value"])
+        agent.to(sd["device"])
+        return agent
 
     def to(self, device: int | torch.device | None):
         self.device = device

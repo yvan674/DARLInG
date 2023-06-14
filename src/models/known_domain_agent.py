@@ -11,15 +11,15 @@ from models.base_embedding_agent import BaseEmbeddingAgent
 
 
 class KnownDomainAgent(BaseEmbeddingAgent):
-    def __init__(self):
-        super().__init__()
+    def __init__(self, domain_embedding_size: int):
+        super().__init__(domain_embedding_size=domain_embedding_size)
         self.device = None
 
     def __repr__(self):
         return "KnownDomainAgent()"
 
     def _produce_action(self, observation: torch.Tensor,
-                        info: dict[str, list[any]]) -> torch.Tensor:
+                        info: dict[str, list[any]], **kwargs) -> torch.Tensor:
         """Produce an action based on the info dictionary.
 
         The info dictionary looks like:
@@ -64,11 +64,12 @@ class KnownDomainAgent(BaseEmbeddingAgent):
         pass
 
     def state_dict(self):
-        pass
+        return {"device": self.device,
+                "domain_embedding_size": self.domain_embedding_size}
 
     @staticmethod
     def load_state_dict(sd: dict[any]):
-        pass
+        return KnownDomainAgent(sd["domain_embedding_size"]).to(sd["device"])
 
     def to(self, device: int | torch.device | None):
         self.device = device

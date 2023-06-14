@@ -15,7 +15,7 @@ from models.ppo import PPO
 class PPOAgent(BaseEmbeddingAgent):
     def __init__(self,
                  input_size: int,
-                 output_size: int,
+                 domain_embedding_size: int,
                  lr: float = 3e-4,
                  num_steps: int = 2048,
                  anneal_lr: bool = True,
@@ -33,7 +33,7 @@ class PPOAgent(BaseEmbeddingAgent):
 
         Args:
             input_size: Size of the environmental observation.
-            output_size: Size of the action tensor.
+            domain_embedding_size: Size of the action tensor.
             lr: Learning rate for the agent optimizer.
             num_steps: Number of steps per policy rollout.
             anneal_lr: Whether to use learning rate annealing.
@@ -48,7 +48,7 @@ class PPOAgent(BaseEmbeddingAgent):
             max_grad_norm: Maximum norm for gradient clipping
             target_kl: Target KL divergence threshold.
         """
-        super().__init__()
+        super().__init__(domain_embedding_size=domain_embedding_size)
         self.lr = lr
         self.num_steps = num_steps
         self.anneal_lr = anneal_lr
@@ -63,15 +63,24 @@ class PPOAgent(BaseEmbeddingAgent):
         self.target_kl = target_kl
 
         self.input_size = input_size
-        self.output_size = output_size
 
         self.ppo = PPO(input_size, output_size)
         self.optimizer = torch.optim.Adam(self.ppo.parameters(), lr=lr,
                                           eps=1e-5)
 
+    def set_anneal_lr(self, epoch, total_epochs):
+        """Set a new learning rate using annealing."""
+        if not self.anneal_lr:
+            return
+        frac = 1.0 - epoch / total_epochs
+        new_lr = frac * self.lr
+        self.optimizer.param_groups[0]["lr"] = new_lr
+
     def _produce_action(self, observation: torch.Tensor,
-                        info: dict[str, list[any]]) -> torch.Tensor:
-        pass
+                        info: dict[str, list[any]],
+                        action: torch.Tensor = None,
+                        **kwargs) -> torch.Tensor:
+        return self.ppo.get_action_and_value(observation, action)
 
     def process_reward(self, observation: torch.Tensor, reward: float):
         pass
@@ -100,11 +109,13 @@ class PPOAgent(BaseEmbeddingAgent):
                 "input_size": self.input_size,
                 "output_size": self.output_size,
                 "ppo": self.ppo.state_dict(),
+                "domain_embedding_size": self.domain_embedding_size,
                 "optimizer": self.optimizer.state_dict()}
 
     @staticmethod
     def load_state_dict(sd: dict[any]):
-        agent = PPOAgent(sd["input_size"], sd["output_size"],
+        agent = PPOAgent(sd["input_size"],
+                         sd["domain_embedding_size"],
                          lr=sd["lr"],
                          num_steps=sd["num_steps"],
                          anneal_lr=sd["anneal_lr"],

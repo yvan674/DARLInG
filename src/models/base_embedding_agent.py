@@ -11,12 +11,12 @@ import torch
 
 
 class BaseEmbeddingAgent(ABC):
-    def __init__(self):
-        pass
+    def __init__(self, domain_embedding_size: int):
+        self.domain_embedding_size = domain_embedding_size
 
     @abstractmethod
     def _produce_action(self, observation: torch.Tensor,
-                        info: dict[str, list[any]]) -> torch.Tensor:
+                        info: dict[str, list[any]], **kwargs) -> torch.Tensor:
         """Produces an action based on an observation and info dict."""
         raise NotImplementedError
 
