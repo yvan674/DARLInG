@@ -19,6 +19,7 @@ from wandb.wandb_run import Run
 
 from ui.base_ui import BaseUI
 from models.base_embedding_agent import BaseEmbeddingAgent
+from models.ppo_agent import PPOAgent
 from loss.multi_joint_loss import MultiJointLoss
 from utils.colors import colorcet_to_image_palette
 from utils.images import tensor_to_image
@@ -127,10 +128,20 @@ class Training:
         # Generate domain embeddings
         if no_grad_agent:
             with torch.no_grad:
-                domain_embedding = self.embedding_agent(z, info)
+                action = self.embedding_agent(z, info)
         else:
-            domain_embedding = self.embedding_agent(z, info)
+            action = self.embedding_agent(z, info)
         null_embedding = self.null_agent(z, info)
+
+        if isinstance(self.embedding_agent, PPOAgent):
+            domain_embedding = action[0]
+            out_dict = {"agent_action": action[0],
+                        "agent_action_log_prob": action[1],
+                        "agent_action_prob_entropy": action[2],
+                        "agent_crtic_value": action[3]}
+        else:
+            out_dict = {"agent_action": action}
+            domain_embedding = action
 
         # Run the heads
         bvp_null, gesture_null = self.null_head(
@@ -147,18 +158,23 @@ class Training:
             bvp_embed, gesture_embed,
             mu, log_sigma
         )
-
-        return {"z": z,
-                "mu": mu,
-                "log_sigma": log_sigma,
-                "bvp_null": bvp_null,
-                "gesture_null": gesture_null,
-                "bvp_embed": bvp_embed,
-                "gesture_embed": gesture_embed,
-                "elbo_loss": loss_dict["elbo_loss"],
-                "null_loss": loss_dict["null_joint_loss"],
-                "embed_loss": loss_dict["embed_joint_loss"],
-                "joint_loss": loss_dict["joint_loss"]}
+        out_dict.update({
+            # Encoder
+            "z": z,
+            "mu": mu,
+            "log_sigma": log_sigma,
+            # Decoders
+            "bvp_null": bvp_null,
+            "gesture_null": gesture_null,
+            "bvp_embed": bvp_embed,
+            "gesture_embed": gesture_embed,
+            # Losses
+            "elbo_loss": loss_dict["elbo_loss"],
+            "null_loss": loss_dict["null_joint_loss"],
+            "embed_loss": loss_dict["embed_joint_loss"],
+            "joint_loss": loss_dict["joint_loss"]
+        })
+        return out_dict
 
     def _train_vae(self, train_loader: DataLoader, device: torch.device,
                    epoch: int):
@@ -228,20 +244,46 @@ class Training:
             self.ui.step(len(info["user"]))
 
     def _train_agent(self, train_loader: DataLoader, device: torch.device,
-                     epoch: int, agent_epochs: int):
+                     epoch: int, agent_epochs: int, total_epochs: int):
         """Trains only the embedding agent."""
-        self.ui.update_status("Training embedding agent...")
+        self.ui.update_status("Running embedding agent...")
+
+        if not isinstance(self.embedding_agent, PPOAgent):
+            # We can't train the agent if it's not the PPO agent.
+            raise ValueError("Only PPOAgent can actually be trained.")
+        # Run annealing
+        self.embedding_agent.set_anneal_lr(epoch, total_epochs)
+
+        # SECTION Set value arrays
+        obs_shape = (len(train_loader), self.encoder.encoder.latent_dim)
+        action_shape = (len(train_loader),
+                        self.embedding_agent.domain_embedding_size)
+        obs = torch.zeros(obs_shape).to(device)
+        actions = torch.zeros(action_shape).to(device)
+        log_probs = torch.zeros(action_shape).to(device)
+        rewards = torch.zeros(len(train_loader)).to(device)
+        values = torch.zeros(len(train_loader)).to(device)
+
+        # SECTION Run policy
         for batch_idx, (amp, phase, bvp, info) in enumerate(train_loader):
             self.step += 1
             start_time = perf_counter()
+            batch_slice = slice(batch_idx * train_loader.batch_size,
+                                (batch_idx + 1) * train_loader.batch_size)
 
             pass_result = self._forward_pass(amp, phase, bvp, info["gesture"],
-                                             info, device)
-            loss_diff = (pass_result["embed_loss"].item()
-                         - pass_result["null_loss"].item())
-            log_dict = {"train_loss_diff": loss_diff}
-            self.embedding_agent.process_reward(pass_result["z"],
-                                                loss_diff)
+                                             info, device, no_grad_vae=True,
+                                             no_grad_agent=True)
+            # Update value arrays
+            obs[batch_slice] = pass_result["z"]
+            actions[batch_slice] = pass_result["agent_action"]
+            log_probs[batch_slice] = pass_result["agent_action_log_prob"]
+            loss_diff = (pass_result["embed_loss"]
+                         - pass_result["null_loss"])
+            rewards[batch_slice] = loss_diff
+            values[batch_slice] = pass_result["agent_critic_value"]
+
+            log_dict = {"train_loss_diff": loss_diff.mean().item()}
             current_time = perf_counter()
             self.logging.log(log_dict, self.step)
             self.ui.update_data({
@@ -250,6 +292,102 @@ class Training:
                 "epoch": epoch
             })
             self.ui.step(len(info["user"]))
+
+        self.ui.update_status("Computing advantage estimates...")
+        # SECTION Compute advantage estimates
+        advantages = torch.zeros_like(rewards).to(device)
+        last_gae_lambda = 0.
+        gamma = self.embedding_agent.gamma
+        gae_lambda = self.embedding_agent.gae_lambda
+        for t in range(self.embedding_agent.num_steps, 0, -1):
+            # Note: We have no terminal states, so next_non_terminal is always 1
+            next_nonterminal = 1.
+            next_value = values[t]
+            delta = (rewards[t - 1]
+                     - values[t - 1]
+                     + (gamma * next_values))
+            advantages[t - 1] = last_gae_lambda = (
+                    delta + (gamma * gae_lambda * last_gae_lambda)
+            )
+        returns = advantages + values
+
+        self.ui.update_status("Updating agent policy and value functions...")
+        # SECTION Update policy and value function
+        indices = np.arange(len(train_loader))
+        clip_fracs = []
+        for agent_epoch in range(agent_epochs):
+            np.random.shuffle(b_inds)
+            steps_completed = 0
+            self.step += 1
+            for start in range(0, train_loader, train_loader.batch_size):
+                end = start + train_loader.batch_size
+                # mb stands for minibatch
+                mb_slice = indices[start:end]
+
+                _, new_log_prob, entropy, new_value = self.embedding_agent(
+                    obs[mb_slice],
+                    action=actions[mb_slice]
+                )
+                log_ratio = new_log_prob - log_probs[mb_slice]
+                ratio = log_ratio.exp()
+
+                clip_coef = self.embedding_agent.clip_coef
+
+                # Calculate approximate KL
+                # <http://joschu.net/blog/kl-approx.html>
+                with torch.no_grad:
+                    old_approx_kl = (-log_ratio).mean()
+                    approx_kl = ((ratio - 1.) - log_ratio).mean()
+                    should_clip = (ratio - 1.0).abs() > clip_coef
+                    clip_fracs += [should_clip.float().mean().item()]
+
+                mb_advantages = advantages[mb_slice]
+
+                if self.embedding_agent.norm_advantage:
+                    mb_mean = mb_advantages.mean()
+                    mb_std = mb_advantages.std()
+                    mb_advantages -= mb_mean
+                    mb_advantages /= mb_std + 1e-8
+
+                pg_loss_1 = -mb_advantages * ratio
+                pg_loss_2 = -mb_advantages * torch.clamp(ratio,
+                                                         1 - clip_coef,
+                                                         1 + clip_coef)
+                pg_loss = torch.max(pg_loss_1, pg_loss_2).mean()
+
+                new_value = new_value.flatten()
+
+                if self.embedding_agent.clip_value_loss:
+                    v_loss_unclipped = (new_value - returns[mb_slice]) ** 2
+                    v_clipped = values[mb_slice] + torch.clamp(
+                        new_value - values[mb_slice],
+                        -clip_coef,
+                        clip_coef
+                    )
+                    v_loss_clipped = (v_clipped - returns[mb_slice]) ** 2
+                    v_loss_max = torch.max(v_loss_unclipped, v_clipped)
+                    v_loss = 0.5 * v_loss_max.mean()
+                else:
+                    v_loss = 0.5 * ((new_value - returns[mb_slice]) ** 2).mean()
+
+                entropy_loss = entropy.mean()
+
+                loss = (pg_loss
+                        - (self.embedding_agent.entropy_coef * entropy_loss)
+                        + (self.embedding_agent.value_func_coef * v_loss))
+
+                self.embedding_agent.optimizer.zero_grad()
+                loss.backward()
+                nn.utils.clip_grad_norm(self.embedding_agent.ppo.parameters(),
+                                        self.embedding_agent.max_grad_norm)
+                self.embedding_agent.optimzer.step()
+                # TODO Actual logging of losses etc.
+            steps_completed += train_loader.batch_size
+            self.ui.step(train_loader.batch_size)
+
+            if self.embedding_agent.target_kl is not None:
+                if approx_kl > self.embedding_agent.target_kl:
+                    self.ui.step(len(train_loader) - steps_completed)
 
     def _validate_holistic(self, valid_loader: DataLoader, device,
                            epoch: int) -> float:
@@ -465,7 +603,8 @@ class Training:
             if train_embedding_agent:
                 self.embedding_agent.train()
 
-                self._train_agent(train_loader, device, epoch)
+                self._train_agent(train_loader, device, epoch, agent_epochs,
+                                  epochs)
 
                 self.embedding_agent.eval()
 
