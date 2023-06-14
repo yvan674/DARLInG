@@ -97,7 +97,9 @@ class Training:
                       bvp: torch.Tensor,
                       gesture: torch.Tensor,
                       info: list[dict[str, any]],
-                      device: torch.device) -> dict[str, torch.Tensor]:
+                      device: torch.device,
+                      no_grad_vae: bool,
+                      no_grad_agent: bool) -> dict[str, torch.Tensor]:
         """Runs a single forward pass of the entire network.
 
         Args:
@@ -107,6 +109,7 @@ class Training:
             gesture: Gesture ground-truths for a given batch.
             info: Info dictionary from the dataset.
             device: Device to train on.
+            no_grad_vae: Applyl no grad to the VAE
         """
         gesture = gesture.to(device)
         if self.bvp_pipeline:
@@ -115,10 +118,18 @@ class Training:
             amp, phase, bvp = amp.to(device), phase.to(device), bvp.to(device)
 
         # Forward pass
-        z, mu, log_sigma = self.encoder(amp, phase, bvp)
+        if no_grad_vae:
+            with torch.no_grad:
+                z, mu, log_sigma = self.encoder(amp, phase, bvp)
+        else:
+            z, mu, log_sigma = self.encoder(amp, phase, bvp)
 
         # Generate domain embeddings
-        domain_embedding = self.embedding_agent(z, info)
+        if no_grad_agent:
+            with torch.no_grad:
+                domain_embedding = self.embedding_agent(z, info)
+        else:
+            domain_embedding = self.embedding_agent(z, info)
         null_embedding = self.null_agent(z, info)
 
         # Run the heads
@@ -157,7 +168,9 @@ class Training:
             self.step += 1
             start_time = perf_counter()
             pass_result = self._forward_pass(amp, phase, bvp, info["gesture"],
-                                             info, device)
+                                             info, device,
+                                             no_grad_vae=False,
+                                             no_grad_agent=True)
 
             # Backward pass
             self.encoder_optimizer.zero_grad()
@@ -215,7 +228,7 @@ class Training:
             self.ui.step(len(info["user"]))
 
     def _train_agent(self, train_loader: DataLoader, device: torch.device,
-                     epoch: int):
+                     epoch: int, agent_epochs: int):
         """Trains only the embedding agent."""
         self.ui.update_status("Training embedding agent...")
         for batch_idx, (amp, phase, bvp, info) in enumerate(train_loader):
@@ -416,6 +429,7 @@ class Training:
               train_loader: DataLoader,
               valid_loader: DataLoader,
               epochs: int,
+              agent_epochs: int,
               device: torch.device):
         """Trains the model which was given in the initialization of the class.
 
@@ -423,7 +437,8 @@ class Training:
             train_embedding_agent: Whether to train the embedding agent or not.
             train_loader: DataLoader containing the training data.
             valid_loader: DataLoader containing the validation data.
-            epochs: Number of epochs to train for
+            epochs: Number of epochs to train for.
+            agent_epochs: Number of epochs to train the embedding agent for.
             device: Which device to train on.
         """
         # Ensure that the models are on the right devices
