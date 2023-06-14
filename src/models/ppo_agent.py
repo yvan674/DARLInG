@@ -66,6 +66,8 @@ class PPOAgent(BaseEmbeddingAgent):
         self.output_size = output_size
 
         self.ppo = PPO(input_size, output_size)
+        self.optimizer = torch.optim.Adam(self.ppo.parameters(), lr=lr,
+                                          eps=1e-5)
 
     def _produce_action(self, observation: torch.Tensor,
                         info: dict[str, list[any]]) -> torch.Tensor:
@@ -97,7 +99,8 @@ class PPOAgent(BaseEmbeddingAgent):
                 "target_kl": self.target_kl,
                 "input_size": self.input_size,
                 "output_size": self.output_size,
-                "ppo": self.ppo.state_dict()}
+                "ppo": self.ppo.state_dict(),
+                "optimizer": self.optimizer.state_dict()}
 
     @staticmethod
     def load_state_dict(sd: dict[any]):
@@ -115,6 +118,7 @@ class PPOAgent(BaseEmbeddingAgent):
                          max_grad_norm=sd["max_grad_norm"],
                          target_kl=sd["target_kl"])
         agent.ppo.load_state_dict(sd["ppo"])
+        agent.optimizer.load_state_dict(sd["optimizer"])
         return agent
 
     def to(self, device: int | torch.device | None):
