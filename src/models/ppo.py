@@ -45,13 +45,14 @@ class PPO(nn.Module):
         """Gets only the critic's response."""
         return self.critic(x)
 
-    def get_action_and_value(self, x):
+    def get_action_and_value(self, x, action):
         """Gets both the actor's and critic's response."""
         action_mean = self.actor_mean(x)
         action_log_sigma = self.actor_log_sigma.expand_as(action_mean)
         action_std = torch.exp(action_log_sigma)
         probs = torch.distributions.Normal(action_mean, action_std)
-        action = probs.sample()
+        if action is None:
+            action = probs.sample()
 
         return (action,
                 probs.log_prob(action).sum(1),
