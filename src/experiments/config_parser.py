@@ -33,7 +33,7 @@ def train_config(batch_size: int = 64,
 
 
 def data_config(data_dir: str | Path = Path("../../data/"),
-                small_dataset: bool = True,
+                dataset_type: str = None,
                 downsample_multiplier: int = 2,
                 transformation: str = None,
                 bvp_agg: str = "stack",
@@ -46,7 +46,8 @@ def data_config(data_dir: str | Path = Path("../../data/"),
 
     Args:
         data_dir: Path to the data directory.
-        small_dataset: Whether to use the small dataset or not.
+        dataset_type: Type of the dataset. Options are [`small`,
+                `single_domain`, `full`].
         downsample_multiplier: How much to downsample the data by.
         transformation: Transformation to use on the data. If None, no
             transformation is used.
@@ -68,13 +69,16 @@ def data_config(data_dir: str | Path = Path("../../data/"),
     if type(data_dir) is str:
         data_dir = Path(data_dir)
 
+    if dataset_type is None:
+        raise ValueError("`dataset_type` parameter must be filled.")
+
     if amp_pipeline is None:
         amp_pipeline = ["torch.from_numpy"]
     if phase_pipeline is None:
         phase_pipeline = ["torch.from_numpy"]
 
     return {"data_dir": data_dir,
-            "small_dataset": small_dataset,
+            "dataset_type": dataset_type,
             "downsample_multiplier": downsample_multiplier,
             "transformation": transformation,
             "bvp_agg": bvp_agg,
