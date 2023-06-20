@@ -10,7 +10,7 @@ train:
 
 data:
   data_dir: "../../data"
-  dataset_type: "small"
+  dataset_type: "single_domain"
   downsample_multiplier: 2
   transformation: null
   bvp_agg: "sum"
