@@ -74,6 +74,14 @@ TEST_LOCATION_SELECTION = {
     "gesture": {"1", "2", "3", "4", "5", "6"}
 }
 
+SINGLE_DOMAIN_SELECTION = {
+    "user": {"2"},
+    "room_num": {1},
+    "torso_location": {"1"},
+    "gesture": {"1", "2", "3", "4", "5", "6"},
+    "face_orientation": {"1"}
+}
+
 
 def calculate_total_dirs(csi_dir: Path) -> int:
     """Calculates total dirs to traverse for use by a progress bar."""
@@ -88,4 +96,5 @@ def calculate_total_dirs(csi_dir: Path) -> int:
 
 __all__ = ["WidarDataset", "calculate_total_dirs", "ROOM_DATE_MAPPING",
            "DATE_ROOM_MAPPING", "TRAINING_SELECTION", "VALIDATION_SELECTION",
-           "TEST_LOCATION_SELECTION", "TEST_ROOM_SELECTION"]
+           "TEST_LOCATION_SELECTION", "TEST_ROOM_SELECTION",
+           "SINGLE_DOMAIN_SELECTION"]

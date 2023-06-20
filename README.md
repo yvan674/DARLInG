@@ -108,6 +108,10 @@ We split it this way to make sure that the test set is truly unseen while the va
 
 We only use gestures 1-6, since these are the gestures which have samples from all participants.
 
+For single domain, we use only User 2 in Room 1 with torso location 1 and face orientation 1.
+This was chosen as it has the largest number of samples.
+Test, validation, and training splits are randomly generated.
+
 
 ### Small Dataset
 
@@ -131,7 +135,7 @@ Our approach is:
 
 1. Generate the small dataset, if desired.
    1. Generate an index for the small dataset using `src/data_utils/generate_dataset_index.py`.
-   2. Generate the small dataset using `src/data_utils/generate_small_splits.py`.
+   2. Generate the smaller datasets using `src/data_utils/generate_smaller_splits.py`.
 2. Otherwise, generate the dataset index using `src/data_utils/generate_dataset_index.py`.
 3. Calculate the mean and standard deviation of amplitude and phase using `src/data_utils/calculate_mean_std.py`
 
