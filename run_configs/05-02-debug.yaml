@@ -5,7 +5,7 @@ train:
   bvp_pipeline: true
 
 data:
-  small_dataset: true
+  dataset_type: "small"
   downsample_multiplier: 2
   bvp_agg: "stack"
 

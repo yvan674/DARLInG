@@ -10,7 +10,7 @@ train:
 
 data:
   data_dir: "F:\\Offline Docs\\Master Thesis\\data"
-  small_dataset: true
+  dataset_type: "small"
   downsample_multiplier: 2
   transformation: null
   bvp_agg: "stack"

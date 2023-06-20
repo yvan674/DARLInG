@@ -20,7 +20,7 @@ from signal_processing.pipeline import Pipeline
 class WidarDataset(Dataset):
     csi_length = 2048  # Tha max lengths we want to use.
 
-    def __init__(self, root_path: Path, split_name: str, is_small: bool = False,
+    def __init__(self, root_path: Path, split_name: str, dataset_type: str,
                  downsample_multiplier: int = 1, return_bvp: bool = True,
                  bvp_agg: Optional[str] = None,
                  return_csi: bool = True,
@@ -64,7 +64,8 @@ class WidarDataset(Dataset):
             root_path: Root path of the data directory (e.g., DARLInG/data/)
             split_name: Name of the split this dataset should be. Options are
                 [`train`, `validation`, `test_room`, `test_location`]
-            is_small: True if this is the small version of the dataset.
+            dataset_type: Type of the dataset. Options are [`small`,
+                `single_domain`, `full`].
             downsample_multiplier: If downsampling is desired, the multiplier
                 for downsampling (e.g., 2 means only keep every other sample)
             return_bvp: Whether the BVP should be returned. If False,
@@ -86,7 +87,7 @@ class WidarDataset(Dataset):
             raise ValueError(f"`{split_name}` not one of allowed options for "
                              f"parameter `split_name`")
         self.split_name = split_name
-        self.is_small = is_small
+        self.dataset_type = dataset_type
         # ts_length is the array size returned given the downsample multiplier.
         self.ts_length = self.csi_length // downsample_multiplier
         self.downsample_multiplier = downsample_multiplier
@@ -105,12 +106,20 @@ class WidarDataset(Dataset):
         self.amp_pipeline = amp_pipeline
         self.phase_pipeline = phase_pipeline
 
-        if is_small:
+        if dataset_type == "small":
             data_dir = root_path / "widar_small"
             index_fp = data_dir / f"{split_name}_index_small.pkl"
             self.data_path = data_dir / split_name
-        else:
+        elif dataset_type == "single_domain":
+            data_dir = root_path / "widar_single_domain"
+            index_fp = data_dir / f"{split_name}_index_single_domain.pkl"
+            self.data_path = data_dir / split_name
+        elif dataset_type == "full":
             index_fp = self.data_path / f"{split_name}_index.pkl"
+        else:
+            raise ValueError(f"Dataset type {dataset_type} is not one of the"
+                             f"possible options [`small`, `single_domain`, "
+                             f"`full`].")
 
         with open(index_fp, "rb") as f:
             index_file: dict[str, any] = pickle.load(f)

@@ -98,7 +98,7 @@ def run_training(config: dict[str, dict[str, any]]):
     data_dir = config["data"]["data_dir"]
     bvp_pipeline = config["train"]["bvp_pipeline"]
     bvp_agg = config["data"]["bvp_agg"]
-    small_dataset = config["data"]["small_dataset"]
+    dataset_type = config["data"]["dataset_type"]
     # Set up the pipeline
     if bvp_pipeline:
         warnings.warn("Running with bvp_pipeline=True; no transformation will "
@@ -140,7 +140,7 @@ def run_training(config: dict[str, dict[str, any]]):
     train_dataset = WidarDataset(
         data_dir,
         "train",
-        small_dataset,
+        dataset_type,
         downsample_multiplier=config["data"]["downsample_multiplier"],
         amp_pipeline=amp_pipeline,
         phase_pipeline=phase_pipeline,
@@ -151,7 +151,7 @@ def run_training(config: dict[str, dict[str, any]]):
     valid_dataset = WidarDataset(
         data_dir,
         "validation",
-        small_dataset,
+        dataset_type,
         downsample_multiplier=config["data"]["downsample_multiplier"],
         amp_pipeline=amp_pipeline,
         phase_pipeline=phase_pipeline,
