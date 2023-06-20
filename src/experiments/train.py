@@ -301,11 +301,11 @@ class Training:
         gae_lambda = self.embedding_agent.gae_lambda
         for t in range(self.embedding_agent.num_steps, 0, -1):
             # Note: We have no terminal states, so next_non_terminal is always 1
-            next_nonterminal = 1.
+            # next_nonterminal = 1.
             next_value = values[t]
             delta = (rewards[t - 1]
                      - values[t - 1]
-                     + (gamma * next_values))
+                     + (gamma * next_value))
             advantages[t - 1] = last_gae_lambda = (
                     delta + (gamma * gae_lambda * last_gae_lambda)
             )
@@ -316,7 +316,7 @@ class Training:
         indices = np.arange(len(train_loader))
         clip_fracs = []
         for agent_epoch in range(agent_epochs):
-            np.random.shuffle(b_inds)
+            np.random.shuffle(indices)
             steps_completed = 0
             self.step += 1
             for start in range(0, train_loader, train_loader.batch_size):
@@ -336,7 +336,7 @@ class Training:
                 # Calculate approximate KL
                 # <http://joschu.net/blog/kl-approx.html>
                 with torch.no_grad():
-                    old_approx_kl = (-log_ratio).mean()
+                    # old_approx_kl = (-log_ratio).mean()
                     approx_kl = ((ratio - 1.) - log_ratio).mean()
                     should_clip = (ratio - 1.0).abs() > clip_coef
                     clip_fracs += [should_clip.float().mean().item()]
@@ -365,7 +365,7 @@ class Training:
                         clip_coef
                     )
                     v_loss_clipped = (v_clipped - returns[mb_slice]) ** 2
-                    v_loss_max = torch.max(v_loss_unclipped, v_clipped)
+                    v_loss_max = torch.max(v_loss_unclipped, v_loss_clipped)
                     v_loss = 0.5 * v_loss_max.mean()
                 else:
                     v_loss = 0.5 * ((new_value - returns[mb_slice]) ** 2).mean()
@@ -380,7 +380,7 @@ class Training:
                 loss.backward()
                 nn.utils.clip_grad_norm(self.embedding_agent.ppo.parameters(),
                                         self.embedding_agent.max_grad_norm)
-                self.embedding_agent.optimzer.step()
+                self.embedding_agent.optimizer.step()
                 # TODO Actual logging of losses etc.
             steps_completed += train_loader.batch_size
             self.ui.step(train_loader.batch_size)
@@ -411,7 +411,8 @@ class Training:
         for batch_idx, (amp, phase, bvp, info) in enumerate(valid_loader):
             start_time = perf_counter()
             pass_result = self._forward_pass(amp, phase, bvp, info["gesture"],
-                                             info, device)
+                                             info, device,
+                                             True, True)
 
             # Extract data only from the losses
             elbo_loss_value = pass_result["elbo_loss"].item()
