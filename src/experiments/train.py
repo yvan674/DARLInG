@@ -120,14 +120,14 @@ class Training:
 
         # Forward pass
         if no_grad_vae:
-            with torch.no_grad:
+            with torch.no_grad():
                 z, mu, log_sigma = self.encoder(amp, phase, bvp)
         else:
             z, mu, log_sigma = self.encoder(amp, phase, bvp)
 
         # Generate domain embeddings
         if no_grad_agent:
-            with torch.no_grad:
+            with torch.no_grad():
                 action = self.embedding_agent(z, info)
         else:
             action = self.embedding_agent(z, info)
@@ -335,7 +335,7 @@ class Training:
 
                 # Calculate approximate KL
                 # <http://joschu.net/blog/kl-approx.html>
-                with torch.no_grad:
+                with torch.no_grad():
                     old_approx_kl = (-log_ratio).mean()
                     approx_kl = ((ratio - 1.) - log_ratio).mean()
                     should_clip = (ratio - 1.0).abs() > clip_coef
