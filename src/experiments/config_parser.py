@@ -124,17 +124,22 @@ def mt_config(decoder_dropout: float = 0.3,
 
 
 def embed_config(embed_agent_value: str = "known",
-                 embed_agent_size: Optional[int] = None) -> dict[str, any]:
+                 embed_agent_size: Optional[int] = None,
+                 embed_agent_epochs: int = 1) -> dict[str, any]:
     """Embedding configuration for training.
 
     Args:
         embed_agent_value: How to embed the agent. Options are
             [`known`, `one-hot`, `probability-measure`].
         embed_agent_size: Size of the embedding. None is only allowed if the
-            embed_agent_value is `known`.
+            embed_agent_value is `known` and is automatically replaced by 33.
+        embed_agent_epochs: Number of epochs to train the embedding agent for.
     """
+    if embed_agent_size is None:
+        embed_agent_size = 33
     return {"embed_agent_value": embed_agent_value,
-            "embed_agent_size": embed_agent_size}
+            "embed_agent_size": embed_agent_size,
+            "embed_agent_epochs": embed_agent_epochs}
 
 
 def optim_loss_config(optimizer: str = "adam",

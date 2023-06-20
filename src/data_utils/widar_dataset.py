@@ -154,9 +154,9 @@ class WidarDataset(Dataset):
         Returns:
             The summed (over the time dimension) BVP with shape (1, 20, 20)
         """
-        if self.is_small:
-            # widar_small moves the files to a different location, so we
-            # overwrite it here.
+        if self.dataset_type != "full":
+            # small and single-domain moves the files to a different location,
+            # so we overwrite it here.
             bvp_file_path = self.data_path / bvp_file_path.name
 
         try:
@@ -192,11 +192,11 @@ class WidarDataset(Dataset):
 
     def __str__(self):
         return f"WidarDataset: {self.split_name}" \
-               f"{' (small)' if self.is_small else ''}"
+               f"({self.dataset_type})"
 
     def __repr__(self):
         return f"WidarDataset({self.split_name}, {self.data_path}, " \
-               f"is_small={self.is_small})"
+               f"({self.dataset_type})"
 
     def __len__(self):
         return self.total_samples
@@ -269,7 +269,7 @@ if __name__ == '__main__':
     p.add_argument("FP", type=Path,
                    help="Path to the data root.")
     args = p.parse_args()
-    d1 = WidarDataset(args.FP, "train", is_small=True,
+    d1 = WidarDataset(args.FP, "train", dataset_type="small",
                       downsample_multiplier=2, bvp_agg="stack")
     print(d1[0])
     breakpoint()

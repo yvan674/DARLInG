@@ -239,7 +239,7 @@ def run_training(config: dict[str, dict[str, any]]):
 
     null_agent = NullAgent(domain_embedding_size, null_value)
     if config["embed"]["embed_agent_value"] == "known":
-        embed_agent = KnownDomainAgent()
+        embed_agent = KnownDomainAgent(config["embed"]["embed_agent_size"])
     else:
         raise NotImplementedError("Actual RL agent is not yet implemented.")
 
@@ -304,7 +304,8 @@ def run_training(config: dict[str, dict[str, any]]):
         train_loader=train_dataloader,
         valid_loader=valid_dataloader,
         epochs=config["train"]["epochs"],
-        device=device
+        device=device,
+        agent_epochs=config["embed"]["embed_agent_epochs"]
     )
 
 

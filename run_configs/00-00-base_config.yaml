@@ -28,6 +28,7 @@ mt:
 embed:
   embed_agent_value: "known"
   embed_agent_size: null
+  embed_agent_epochs: 1
 
 optim_loss:
   optimizer: "sgd"
