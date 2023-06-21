@@ -2,8 +2,8 @@
 # input.
 
 train:
-  batch_size: 64
-  epochs: 50
+  batch_size: 16
+  epochs: 300
   ui: tqdm
   checkpoint_dir: "../../checkpoints/"
   bvp_pipeline: true
@@ -35,7 +35,7 @@ embed:
 optim_loss:
   optimizer: "adam"
   lr: 0.0001
-  alpha: 0.5
+  alpha: 0.3
   beta: 0.5
 
 debug:
