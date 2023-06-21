@@ -45,7 +45,7 @@ class KnownDomainAgent(BaseEmbeddingAgent):
                 for k in ("user", "room_num", "torso_location",
                           "face_orientation")}
         # Not the usual one-hot way since this is kinda weirdly formed
-        for i in range(len(info)):
+        for i in range(len(info["user"])):
             user_val = info["user"][i]
             room_val = 17 + info["room_num"][i]
             torso_val = 17 + 3 + info["torso_location"][i]
