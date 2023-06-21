@@ -311,4 +311,6 @@ def run_training(config: dict[str, dict[str, any]]):
 
 if __name__ == '__main__':
     args = parse_args()
+    print("Running from config file:")
+    print(f"{args.CONFIG_FP}")
     run_training(parse_config_file(args.CONFIG_FP))
