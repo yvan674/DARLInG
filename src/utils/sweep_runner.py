@@ -33,6 +33,12 @@ if __name__ == '__main__':
             if config_type not in config:
                 raise ValueError(f"Invalid config key "
                                  f"{config_key}.{config_key}.")
+            if config_value == "true":
+                config_value = True
+            elif config_value == "false":
+                config_value = False
+            elif config_value == "null":
+                config_value = None
             config[config_type][config_key] = config_value
         else:
             raise ValueError(f"Invalid argument {arg}.")
