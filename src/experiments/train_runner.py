@@ -18,7 +18,7 @@ import wandb
 
 from data_utils.widar_dataset import WidarDataset
 from data_utils.dataloader_collate import widar_collate_fn
-from experiments.config_parser import parse_config_file
+from utils.config_parser import parse_config_file
 from experiments.train import Training
 from models.encoder import AmpPhaseEncoder, BVPEncoder
 from models.multi_task import MultiTaskHead
