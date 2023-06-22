@@ -39,6 +39,17 @@ if __name__ == '__main__':
                 config_value = False
             elif config_value == "null":
                 config_value = None
+
+            # Try converting config_values from string to int
+            try:
+                config_value = int(config_value)
+            except ValueError:
+                # Try converting config_values from string to float
+                try:
+                    config_value = float(config_value)
+                except ValueError:
+                    pass
+
             config[config_type][config_key] = config_value
         else:
             raise ValueError(f"Invalid argument {arg}.")
