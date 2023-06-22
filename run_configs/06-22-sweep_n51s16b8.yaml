@@ -72,11 +72,8 @@ parameters:
     value: "../data"
     distribution: constant
   data.bvp_agg:
-    values:
-      - stack
-      - sum
-      - 1d
-    distribution: categorical
+    value: sum
+    distribution: constant
   mt.predictor_activation_fn:
     values:
       - relu
