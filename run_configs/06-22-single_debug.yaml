@@ -39,5 +39,5 @@ optim_loss:
   beta: 0.5
 
 debug:
-  is_debug: false
-  on_cpu: false
+  is_debug: true
+  on_cpu: true
