@@ -1,0 +1,99 @@
+program: utils/sweep_runner.py
+method: bayes
+metric:
+  goal: maximize
+  name: valid_embed_f1
+parameters:
+  optim_loss.optimizer:
+    values:
+      - sgd
+      - adam
+    distribution: categorical
+  optim_loss.alpha:
+    max: 0
+    min: -10
+    distribution: log_uniform
+  optim_loss.beta:
+    max: 0
+    min: -10
+    distribution: log_uniform
+  optim_loss.lr:
+    max: 0
+    min: -10
+    distribution: log_uniform
+  encoder.activation_fn:
+    values:
+      - relu
+      - selu
+      - leaky
+    distribution: categorical
+  encoder.latent_dim:
+    max: 100
+    min: 10
+    distribution: int_uniform
+  encoder.dropout:
+    max: 0.6
+    min: 0.15
+    distribution: uniform
+  train.checkpoint_dir:
+    value: "../checkpoints"
+    distribution: constant
+  train.bvp_pipeline:
+    value: "true"
+    distribution: constant
+  train.batch_size:
+    values:
+      - 16
+      - 32
+    distribution: categorical
+  train.epochs:
+    value: 300
+    distribution: constant
+  train.ui:
+    value: "tqdm"
+    distribution: constant
+  embed.embed_agent_value:
+    values:
+      - known
+    distribution: categorical
+  debug.is_debug:
+    value: "false"
+    distribution: constant
+  debug.on_cpu:
+    value: "false"
+    distribution: constant
+  data.downsample_multiplier:
+    value: 2
+    distribution: constant
+  data.dataset_type:
+    value: "single_domain"
+    distribution: constant
+  data.data_dir:
+    value: "../data"
+    distribution: constant
+  data.bvp_agg:
+    values:
+      - stack
+      - sum
+      - 1d
+    distribution: categorical
+  mt.predictor_activation_fn:
+    values:
+      - relu
+      - leaky
+      - selu
+    distribution: categorical
+  mt.decoder_activation_fn:
+    values:
+      - relu
+      - leaky
+      - selu
+    distribution: categorical
+  mt.predictor_dropout:
+    max: 0.6
+    min: 0.15
+    distribution: uniform
+  mt.decoder_dropout:
+    max: 0.6
+    min: 0.15
+    distribution: uniform
