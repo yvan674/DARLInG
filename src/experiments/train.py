@@ -170,6 +170,7 @@ class Training:
             "gesture_embed": gesture_embed,
             # Losses
             "elbo_loss": loss_dict["elbo_loss"],
+            "class_loss": loss_dict["class_loss"],
             "null_loss": loss_dict["null_joint_loss"],
             "embed_loss": loss_dict["embed_joint_loss"],
             "joint_loss": loss_dict["joint_loss"]
