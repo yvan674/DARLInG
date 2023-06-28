@@ -26,9 +26,21 @@ mt:
   predictor_activation_fn: "relu"
 
 embed:
-  embed_agent_value: "known"
-  embed_agent_size: null
-  embed_agent_epochs: 1
+  value_type: "known"
+  embed_size: null
+  epochs: 1
+  lr: 0.0001
+  num_steps: 2048
+  anneal_lr: true
+  gamma: 0.99
+  gae_labmda: 0.95
+  norm_advantage: true
+  clip_coef: 0.2
+  clip_value_loss: true
+  entropy_coef: 0.0
+  value_func_coef: 0.5
+  max_grad_norm: 0.5
+  target_kl: null
 
 optim_loss:
   optimizer: "sgd"

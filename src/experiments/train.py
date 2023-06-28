@@ -138,7 +138,7 @@ class Training:
             out_dict = {"agent_action": action[0],
                         "agent_action_log_prob": action[1],
                         "agent_action_prob_entropy": action[2],
-                        "agent_crtic_value": action[3]}
+                        "agent_critic_value": action[3]}
         else:
             out_dict = {"agent_action": action}
             domain_embedding = action
@@ -247,7 +247,10 @@ class Training:
     def _train_agent(self, train_loader: DataLoader, device: torch.device,
                      epoch: int, agent_epochs: int, total_epochs: int):
         """Trains only the embedding agent."""
-        self.ui.update_status("Running embedding agent...")
+        self.ui.update_status("Training embedding agent...")
+
+        # # DEBUG
+        # torch.autograd.set_detect_anomaly(True)
 
         if not isinstance(self.embedding_agent, PPOAgent):
             # We can't train the agent if it's not the PPO agent.
@@ -256,21 +259,25 @@ class Training:
         self.embedding_agent.set_anneal_lr(epoch, total_epochs)
 
         # SECTION Set value arrays
-        obs_shape = (len(train_loader), self.encoder.encoder.latent_dim)
-        action_shape = (len(train_loader),
+        array_length = len(train_loader.dataset)
+        obs_shape = (array_length, self.encoder.encoder.latent_dim)
+        action_shape = (array_length,
                         self.embedding_agent.domain_embedding_size)
         obs = torch.zeros(obs_shape).to(device)
         actions = torch.zeros(action_shape).to(device)
-        log_probs = torch.zeros(action_shape).to(device)
-        rewards = torch.zeros(len(train_loader)).to(device)
-        values = torch.zeros(len(train_loader)).to(device)
+        log_probs = torch.zeros((array_length,)).to(device)
+        rewards = torch.zeros((array_length,)).to(device)
+        values = torch.zeros((array_length,)).to(device)
 
         # SECTION Run policy
         for batch_idx, (amp, phase, bvp, info) in enumerate(train_loader):
-            self.step += 1
             start_time = perf_counter()
+            self.step += 1
+            current_batch_size = len(info["date"])
+            # Slice from previous "full" batch until current batch
             batch_slice = slice(batch_idx * train_loader.batch_size,
-                                (batch_idx + 1) * train_loader.batch_size)
+                                (batch_idx * train_loader.batch_size)
+                                + current_batch_size)
 
             pass_result = self._forward_pass(amp, phase, bvp, info["gesture"],
                                              info, device, no_grad_vae=True,
@@ -282,7 +289,7 @@ class Training:
             loss_diff = (pass_result["embed_loss"]
                          - pass_result["null_loss"])
             rewards[batch_slice] = loss_diff
-            values[batch_slice] = pass_result["agent_critic_value"]
+            values[batch_slice] = pass_result["agent_critic_value"].flatten()
 
             log_dict = {"train_loss_diff": loss_diff.mean().item()}
             current_time = perf_counter()
@@ -294,39 +301,43 @@ class Training:
             })
             self.ui.step(len(info["user"]))
 
-        self.ui.update_status("Computing advantage estimates...")
         # SECTION Compute advantage estimates
-        advantages = torch.zeros_like(rewards).to(device)
-        last_gae_lambda = 0.
-        gamma = self.embedding_agent.gamma
-        gae_lambda = self.embedding_agent.gae_lambda
-        for t in range(self.embedding_agent.num_steps, 0, -1):
-            # Note: We have no terminal states, so next_non_terminal is always 1
-            # next_nonterminal = 1.
-            next_value = values[t]
-            delta = (rewards[t - 1]
-                     - values[t - 1]
-                     + (gamma * next_value))
-            advantages[t - 1] = last_gae_lambda = (
-                    delta + (gamma * gae_lambda * last_gae_lambda)
-            )
-        returns = advantages + values
+        self.ui.update_status("Computing advantage estimates...")
+        with torch.no_grad():
+            advantages = torch.zeros_like(rewards).to(device)
+            last_gae_lambda = 0.
+            gamma = self.embedding_agent.gamma
+            gae_lambda = self.embedding_agent.gae_lambda
+            for t in range(array_length - 1, -1, -1):
+                # Note: We have no terminal states, so next_non_terminal is
+                # always 1. We comment it out since it's a multiplier
+                # e.g. next_nonterminal * next_value * gamma, so is irrelevant
+                # next_nonterminal = 1.
+                next_value = values[t]
+                delta = (rewards[t - 1]
+                         - values[t - 1]
+                         + (gamma * next_value))
+                advantages[t - 1] = last_gae_lambda = (
+                        delta + (gamma * gae_lambda * last_gae_lambda)
+                )
+            returns = advantages + values
 
-        self.ui.update_status("Updating agent policy and value functions...")
         # SECTION Update policy and value function
-        indices = np.arange(len(train_loader))
+        self.ui.update_status("Updating agent policy and value functions...")
+        # We use indices here since we want to shuffle it at every epoch.
+        indices = np.arange(array_length)
         clip_fracs = []
         for agent_epoch in range(agent_epochs):
             np.random.shuffle(indices)
             steps_completed = 0
             self.step += 1
-            for start in range(0, train_loader, train_loader.batch_size):
-                end = start + train_loader.batch_size
+            for start in range(0, array_length, train_loader.batch_size):
+                end = min(start + train_loader.batch_size, array_length)
                 # mb stands for minibatch
                 mb_slice = indices[start:end]
 
                 _, new_log_prob, entropy, new_value = self.embedding_agent(
-                    obs[mb_slice],
+                    observation=obs[mb_slice],
                     action=actions[mb_slice]
                 )
                 log_ratio = new_log_prob - log_probs[mb_slice]

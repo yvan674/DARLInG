@@ -123,23 +123,58 @@ def mt_config(decoder_dropout: float = 0.3,
             "predictor_activation_fn": predictor_activation_fn}
 
 
-def embed_config(embed_agent_value: str = "known",
-                 embed_agent_size: Optional[int] = None,
-                 embed_agent_epochs: int = 1) -> dict[str, any]:
+def embed_config(value_type: str = "known",
+                 embed_size: Optional[int] = None,
+                 epochs: int = 1,
+                 lr: float = 1e-4,
+                 anneal_lr: bool = True,
+                 gamma: float = 0.99,
+                 gae_lambda: float = 0.95,
+                 norm_advantage: bool = True,
+                 clip_coef: float = 0.2,
+                 clip_value_loss: bool = True,
+                 entropy_coef: float = 0.0,
+                 value_func_coef: float = 0.5,
+                 max_grad_norm: float = 0.5,
+                 target_kl: float = None) -> dict[str, any]:
     """Embedding configuration for training.
 
     Args:
-        embed_agent_value: How to embed the agent. Options are
+        value_type: How to embed the agent. Options are
             [`known`, `one-hot`, `probability-measure`].
-        embed_agent_size: Size of the embedding. None is only allowed if the
+        embed_size: Size of the embedding. None is only allowed if the
             embed_agent_value is `known` and is automatically replaced by 33.
-        embed_agent_epochs: Number of epochs to train the embedding agent for.
+        epochs: Number of epochs to train the embedding agent for.
+        lr: Learning rate for the agent optimizer.
+        num_steps: Number of steps per policy rollout.
+        anneal_lr: Whether to use learning rate annealing.
+        gamma: Discount factor gamma in the PPO algorithm.
+        gae_lambda: General advantage estimation lambda value.
+        norm_advantage: Whether to normalize the advantage value.
+        clip_coef: Surrogate clipping coefficient.
+        clip_value_loss: Whether to use a clipped value function. PPO paper
+            uses a clipped value function.
+        entropy_coef: Coefficient for entropy.
+        value_func_coef: Coefficient for the value function.
+        max_grad_norm: Maximum norm for gradient clipping
+        target_kl: Target KL divergence threshold.
     """
-    if embed_agent_size is None:
-        embed_agent_size = 33
-    return {"embed_agent_value": embed_agent_value,
-            "embed_agent_size": embed_agent_size,
-            "embed_agent_epochs": embed_agent_epochs}
+    if embed_size is None:
+        embed_size = 33
+    return {"value_type": value_type,
+            "embed_size": embed_size,
+            "epochs": epochs,
+            "lr": lr,
+            "anneal_lr": anneal_lr,
+            "gamma": gamma,
+            "gae_lambda": gae_lambda,
+            "norm_advantage": norm_advantage,
+            "clip_coef": clip_coef,
+            "clip_value_loss": clip_value_loss,
+            "entropy_coef": entropy_coef,
+            "value_func_coef": value_func_coef,
+            "max_grad_norm": max_grad_norm,
+            "target_kl": target_kl}
 
 
 def optim_loss_config(optimizer: str = "adam",
@@ -209,11 +244,11 @@ def parse_config_file(config_fp: Path) -> dict[str, dict[str, any]]:
         config_dict["debug"] = debug_config()
 
     # Verify configuration
-    if config_dict["embed"]["embed_agent_size"] is None and \
-            config_dict["embed"]["embed_agent_value"] != "known":
+    if config_dict["embed"]["embed_size"] is None and \
+            config_dict["embed"]["value_type"] != "known":
         raise ValueError("A value must be provided for parameter "
-                         f"embed_agent_size if embed_agent_value="
-                         f"{config_dict['embed']['embed_agent_value']}.")
+                         f"embed_size if value_type="
+                         f"{config_dict['embed']['value_type']}.")
 
     if (config_dict["data"]["bvp_agg"] is not None) \
             and (config_dict["data"]["bvp_agg"] not in ("stack", "1d", "sum")):

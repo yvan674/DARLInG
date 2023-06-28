@@ -24,6 +24,7 @@ from models.encoder import AmpPhaseEncoder, BVPEncoder
 from models.multi_task import MultiTaskHead
 from models.null_agent import NullAgent
 from models.known_domain_agent import KnownDomainAgent
+from models.ppo_agent import PPOAgent
 from loss.multi_joint_loss import MultiJointLoss
 from signal_processing.pipeline import Pipeline
 from signal_processing.standard_scaler import StandardScaler
@@ -163,7 +164,7 @@ def run_training(config: dict[str, dict[str, any]]):
     # 1 worker ensure no multithreading so we can debug easily
     # num_workers = 1 if is_debug else (torch.get_num_threads() - 2) // 2
     # Trying to get a process lock for the dataloader takes way too long if
-    # num_workers > 0 (~3x longer) so we set num_workers to always be 1
+    # num_workers > 0 (~3x longer) so we set num_workers to always be 0
     num_workers = 0
     train_dataloader = DataLoader(train_dataset,
                                   config["train"]["batch_size"],
@@ -186,10 +187,10 @@ def run_training(config: dict[str, dict[str, any]]):
     # VAE based model
     # this is hard coded. There are 33 possible domain factors if the domain
     # factors that are in the ground-truth data is encoded in one-hot.
-    # If embed_agent_size is None, we assume we want to use the ground-truth
+    # If embed_size is None, we assume we want to use the ground-truth
     # domain factors
-    if config["embed"]["embed_agent_size"] is not None:
-        domain_embedding_size = config["embed"]["embed_agent_size"]
+    if config["embed"]["embed_size"] is not None:
+        domain_embedding_size = config["embed"]["embed_size"]
     else:
         domain_embedding_size = 33
 
@@ -232,16 +233,30 @@ def run_training(config: dict[str, dict[str, any]]):
                                input_features)
 
     # Embedding agents
-    if config["embed"]["embed_agent_value"] in ("known", "one-hot"):
+    if config["embed"]["value_type"] in ("known", "one-hot"):
         null_value = 0.
     else:
         null_value = None
 
     null_agent = NullAgent(domain_embedding_size, null_value)
-    if config["embed"]["embed_agent_value"] == "known":
-        embed_agent = KnownDomainAgent(config["embed"]["embed_agent_size"])
+    if config["embed"]["value_type"] == "known":
+        embed_agent = KnownDomainAgent(domain_embedding_size)
     else:
-        raise NotImplementedError("Actual RL agent is not yet implemented.")
+        embed_agent = PPOAgent(
+            input_size=config["encoder"]["latent_dim"],
+            domain_embedding_size=domain_embedding_size,
+            lr=config["embed"]["lr"],
+            anneal_lr=config["embed"]["anneal_lr"],
+            gamma=config["embed"]["gamma"],
+            gae_lambda=config["embed"]["gae_lambda"],
+            norm_advantage=config["embed"]["norm_advantage"],
+            clip_coef=config["embed"]["clip_coef"],
+            clip_value_loss=config["embed"]["clip_value_loss"],
+            entropy_coef=config["embed"]["entropy_coef"],
+            value_func_coef=config["embed"]["value_func_coef"],
+            max_grad_norm=config["embed"]["max_grad_norm"],
+            target_kl=config["embed"]["target_kl"],
+        )
 
     # Move models to device
     encoder.to(device)
@@ -272,7 +287,7 @@ def run_training(config: dict[str, dict[str, any]]):
                     "batch": "0",
                     "rate": float("nan")}
     train_steps = len(train_dataset)
-    if config["embed"]["embed_agent_value"] != "known":
+    if config["embed"]["value_type"] != "known":
         # Then we're training the embedding agent as well, so we go through
         # the train dataset twice
         train_steps *= 2
@@ -300,12 +315,12 @@ def run_training(config: dict[str, dict[str, any]]):
         run, checkpoint_dir, ui                               # Utils
     )
     training.train(
-        train_embedding_agent=config["embed"]["embed_agent_value"] != "known",
+        train_embedding_agent=config["embed"]["value_type"] != "known",
         train_loader=train_dataloader,
         valid_loader=valid_dataloader,
         epochs=config["train"]["epochs"],
         device=device,
-        agent_epochs=config["embed"]["embed_agent_epochs"]
+        agent_epochs=config["embed"]["epochs"]
     )
 
 

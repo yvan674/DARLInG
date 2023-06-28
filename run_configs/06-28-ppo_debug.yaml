@@ -1,0 +1,28 @@
+train:
+  batch_size: 64
+  epochs: 2
+  ui: "tqdm"
+  bvp_pipeline: true
+
+data:
+  dataset_type: "small"
+  downsample_multiplier: 2
+  bvp_agg: "stack"
+
+encoder:
+  latent_dim: 50
+
+embed:
+  value_type: "probability-measure"
+  embed_size: 40
+  epochs: 2
+
+optim_loss:
+  optimizer: "adam"
+  lr: 0.001
+  alpha: 0.01  # from VAE exercise
+  beta: 0.5
+
+debug:
+  is_debug: true
+  on_cpu: true

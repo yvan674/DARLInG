@@ -14,21 +14,21 @@ class NullAgent(BaseEmbeddingAgent):
     def __init__(self, domain_embedding_size: int, null_value: float | None):
         super().__init__(domain_embedding_size=domain_embedding_size)
         self.device = None
-        self.null_value = null_value
+        if null_value is None:
+            self.null_value = 1 / self.domain_embedding_size
+        else:
+            self.null_value = null_value
 
     def __repr__(self):
         return f"NullAgent(embedding_length={self.domain_embedding_size}, " \
                f"null_value={self.null_value})"
 
     def _produce_action(self, observation: torch.Tensor,
-                        info: dict[str, list[any]]) -> torch.Tensor:
+                        info: dict[str, list[any]], **kwargs) -> torch.Tensor:
         batch_size = len(info["user"])
-        if self.null_value is None:
-            fill_value = 1 / batch_size
-        else:
-            fill_value = self.null_value
+
         return torch.full((batch_size, self.domain_embedding_size),
-                          fill_value=fill_value,
+                          fill_value=self.null_value,
                           device=self.device)
 
     def process_reward(self, observation: torch.Tensor, reward: float):
