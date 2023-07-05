@@ -237,6 +237,7 @@ class WidarDataset(Dataset):
             csi_files = [self._load_csi_file(fp)
                          for fp in data_record[f"csi_paths_{csi_index}"]]
             csi = self._stack_csi_arrays(csi_files)
+            csi = csi.copy()  # reset strides
             amp = np.absolute(csi).astype(np.float32)
             phase = np.angle(csi).astype(np.float32)
         else:
@@ -258,6 +259,12 @@ class WidarDataset(Dataset):
         if self.return_csi:
             amp = self.amp_pipeline(amp)
             phase = self.phase_pipeline(phase)
+
+            # convert it to float32
+            if isinstance(amp, torch.Tensor):
+                amp = amp.to(torch.float32)
+            if isinstance(phase, torch.Tensor):
+                phase = phase.to(torch.float32)
 
         return amp, phase, bvp, info
 

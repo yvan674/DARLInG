@@ -44,6 +44,12 @@ class Pipeline(SignalProcessor):
         """
         for p in self.processors:
             x = p(x, **kwargs)
+            if isinstance(x, np.ndarray):
+                if True in [stride < 0 for stride in x.strides]:
+                    # If any of the strides are negative, we use array.copy() to
+                    # reset the strides. This is only an issue with numpy array
+                    # to torch tensor conversions
+                    x = x.copy()
         return x
 
     @staticmethod
@@ -58,7 +64,8 @@ class Pipeline(SignalProcessor):
             match s:
                 case "lowpass_filter":
                     processors.append(LowPassFilter(
-                        250, 1000 // downsample_multiplier
+                        250 // downsample_multiplier,
+                        1000 // downsample_multiplier
                     ))
                 case "phase_derivative":
                     processors.append(PhaseDerivative())

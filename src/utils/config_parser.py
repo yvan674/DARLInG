@@ -196,15 +196,18 @@ def optim_loss_config(optimizer: str = "adam",
 
 
 def debug_config(is_debug: bool = False,
-                 on_cpu: bool = False):
+                 on_cpu: bool = False,
+                 offline: bool = False):
     """Debug configuration for training.
 
     Args:
         is_debug: Whether to run in debug mode.
         on_cpu: Whether to force running on the CPU.
+        offline: Whether to run wandb in offline mode.
     """
     return {"is_debug": is_debug,
-            "on_cpu": on_cpu}
+            "on_cpu": on_cpu,
+            "offline": offline}
 
 
 def parse_config_file(config_fp: Path) -> dict[str, dict[str, any]]:

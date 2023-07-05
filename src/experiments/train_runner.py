@@ -7,6 +7,7 @@ Author:
 """
 from argparse import ArgumentParser
 from pathlib import Path
+import os
 import warnings
 
 import torch
@@ -63,7 +64,6 @@ def run_training(config: dict[str, dict[str, any]]):
 
     """
     # SECTION Initial stuff
-    is_debug = config["debug"]["is_debug"]
     # Set tags
     if config["data"]["transformation"] is None:
         if config["train"]["bvp_pipeline"]:
@@ -78,6 +78,9 @@ def run_training(config: dict[str, dict[str, any]]):
         tags.append("debug")
 
     # Init wandb
+    if config["debug"]["offline"]:
+        os.environ["WANDB_MODE"] = "dryrun"
+        warnings.warn("Running WandB in offline mode.")
     run = wandb.init(project="master-thesis", entity="yvan674",
                      config=config, tags=tags)
     # Validate checkpoints dir

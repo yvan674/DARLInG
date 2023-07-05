@@ -11,16 +11,20 @@ train:
 data:
   data_dir: "F:\\Offline Docs\\Master Thesis\\data"
   dataset_type: "single_domain"
-  downsample_multiplier: 1
+  downsample_multiplier: 2
   transformation: "mtf"
   bvp_agg: "sum"
   amp_pipeline:
     - "lowpass_filter"
+    - "standard_scalar"
+    - "transform"
     - "torch.from_numpy"
   phase_pipeline:
     - "phase_unwrap"
     - "phase_filter"
     - "lowpass_filter"
+    - "standard_scalar"
+    - "transform"
     - "torch.from_numpy"
 encoder:
   dropout: 0.3
@@ -46,3 +50,4 @@ optim_loss:
 debug:
   is_debug: true
   on_cpu: true
+  offline: true
