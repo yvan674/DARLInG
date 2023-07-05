@@ -1,0 +1,48 @@
+# Initial attempts to train the model with the known domain agent and csi as
+# input.
+
+train:
+  batch_size: 16
+  epochs: 300
+  ui: tqdm
+  checkpoint_dir: "../checkpoints/"
+  bvp_pipeline: false
+
+data:
+  data_dir: "F:\\Offline Docs\\Master Thesis\\data"
+  dataset_type: "single_domain"
+  downsample_multiplier: 1
+  transformation: "mtf"
+  bvp_agg: "sum"
+  amp_pipeline:
+    - "lowpass_filter"
+    - "torch.from_numpy"
+  phase_pipeline:
+    - "phase_unwrap"
+    - "phase_filter"
+    - "lowpass_filter"
+    - "torch.from_numpy"
+encoder:
+  dropout: 0.3
+  latent_dim: 10
+  activation_fn: "relu"
+
+mt:
+  decoder_dropout: 0.3
+  decoder_activation_fn: "relu"
+  predictor_dropout: 0.3
+  predictor_activation_fn: "relu"
+
+embed:
+  value_type: "known"
+  embed_size: null
+
+optim_loss:
+  optimizer: "adam"
+  lr: 0.0001
+  alpha: 0.3
+  beta: 0.5
+
+debug:
+  is_debug: true
+  on_cpu: true
