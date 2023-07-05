@@ -140,6 +140,8 @@ class WidarDataset(Dataset):
             # widar_small moves the files to a different location, so we
             # overwrite it here.
             csi_file_path = self.data_path / csi_file_path.name
+        elif self.dataset_type == "single_domain":
+            csi_file_path = self.data_path / csi_file_path.name
         csidata = csiread.Intel(str(csi_file_path), if_report=False)
         csidata.read()
         csi = csidata.get_scaled_csi_sm(True)[:, :, :, :1]
