@@ -67,7 +67,7 @@ def process_and_show(dataset: WidarDataset, amp_pipe: Pipeline,
 
 def main():
     data_path = Path("/Users/Yvan/Git/DARLInG/data/")
-    std_path = Path("/Users/Yvan/Git/DARLInG/data/mean_std.csv")
+    std_path = Path("/Users/Yvan/Git/DARLInG/data/widar_small")
 
     phase_scaler = StandardScaler(std_path, "phase")
     amp_scaler = StandardScaler(std_path, "amp")
@@ -79,7 +79,7 @@ def main():
     amp_pipe = Pipeline([LowPassFilter(250, 1000),
                          amp_scaler])
 
-    dataset = WidarDataset(data_path, "train", True, return_bvp=False)
+    dataset = WidarDataset(data_path, "train", "small", return_bvp=False)
 
     process_and_show(dataset, amp_pipe, phase_pipe, GramianAngularField(),
                      "GAF")
