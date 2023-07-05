@@ -136,7 +136,7 @@ class WidarDataset(Dataset):
              CSI [pn, cn, an, 1] where pn is the packet number, cn the
              subcarrier channel number, and an the antenna number.
          """
-        if self.dataset_type == "is_small":
+        if self.dataset_type == "small":
             # widar_small moves the files to a different location, so we
             # overwrite it here.
             csi_file_path = self.data_path / csi_file_path.name
