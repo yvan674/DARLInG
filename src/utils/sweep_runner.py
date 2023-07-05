@@ -14,13 +14,25 @@ if __name__ == '__main__':
     # Read command line arguments
     args = sys.argv[1:]
 
-    config = {"train": {},
+    # Set up data_dir config based on system (i.e., mac or windows)
+    if sys.platform == "win32":
+        data_dir = "F:\\Offline Docs\\Master Thesis\\data"
+    elif sys.platform == "darwin":
+        data_dir = "../data"
+    else:
+        raise ValueError("This currently only supports Windows and macOS.")
+
+    # Set up constant configs explicitly, in case defaults change
+    config = {"train": {"checkpoint_dir": "../checkpoints",
+                        "epochs": 150,
+                        "ui": "tqdm"},
               "data": {},
               "encoder": {},
               "mt": {},
               "embed": {},
               "optim_loss": {},
-              "debug": {}}
+              "debug": {"is_debug": False,
+                        "on_cpu": False}}
 
     for arg in args:
         if arg.startswith("--"):
