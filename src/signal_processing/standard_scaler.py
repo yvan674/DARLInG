@@ -15,11 +15,12 @@ from signal_processing.base import SignalProcessor
 
 
 class StandardScaler(SignalProcessor):
-    def __init__(self, fp: Path, signal_type: str):
-        """Standardize by removing the mean and sacling to unit variance.
+    def __init__(self, data_dir: Path, signal_type: str):
+        """Standardize by removing the mean and scaling to unit variance.
 
         Args:
-            fp: Path to the csv file which contains the calculated mean and std.
+            data_dir: Path to the root data directory containing the mean and
+                std CSV file.
             signal_type: The type of signal this specific object will
                 standardize. Options are [`amp`, `phase`].
         """
@@ -27,6 +28,8 @@ class StandardScaler(SignalProcessor):
         if signal_type not in ("amp", "phase"):
             raise ValueError(f"Signal type {signal_type} must be one of "
                              f"[`amp`, `phase`]")
+
+        fp = data_dir / "mean_std.csv"
         with open(fp, "r") as f:
             reader: DictReader[any] = DictReader(f)
             for row in reader:
