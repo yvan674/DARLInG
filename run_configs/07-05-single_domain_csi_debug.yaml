@@ -5,11 +5,11 @@ train:
   batch_size: 16
   epochs: 300
   ui: tqdm
-  checkpoint_dir: "../checkpoints/"
+  checkpoint_dir: "../../checkpoints/"
   bvp_pipeline: false
 
 data:
-  data_dir: "F:\\Offline Docs\\Master Thesis\\data"
+  data_dir: "../../data"
   dataset_type: "single_domain"
   downsample_multiplier: 2
   transformation: "mtf"
