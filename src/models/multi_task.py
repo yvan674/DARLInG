@@ -59,7 +59,8 @@ class GesturePredictor(nn.Module):
                  fc_ac_func: nn.Module = nn.ReLU,
                  dropout: float = 0.3,
                  num_classes: int = 6,
-                 in_features: int = 10):
+                 in_features: int = 10,
+                 num_layers: int = 3):
         """Gesture Predictor using a fully connected network."""
         super().__init__()
 
@@ -71,13 +72,18 @@ class GesturePredictor(nn.Module):
                 fc_ac_func()
             )
 
-        self.mlp = nn.Sequential(
-            linear_block(in_features, 256),
-            linear_block(256, 512),
-            linear_block(512, 1024),
-            nn.Linear(1024, num_classes),
-            nn.Softmax(dim=1)
-        )
+        output_layers = [2 ** (i + 4) for i in range(num_layers)]
+        self.mlp = nn.Sequential()
+
+        output_sizes = [(in_features, output_layers[0])] + \
+                       [(output_layers[i], output_layers[i + 1])
+                        for i in range(len(output_layers) - 1)] + \
+                       [(output_layers[-1], num_classes)]
+
+        for size in output_sizes:
+            self.mlp.append(linear_block(size[0], size[1]))
+
+        self.mlp.append(nn.Softmax(dim=1))
 
     def forward(self, x):
         return self.mlp(x)
@@ -88,6 +94,7 @@ class MultiTaskHead(nn.Module):
                  decoder_ac_func: nn.Module,
                  decoder_dropout: float,
                  encoder_latent_dim: int,
+                 predictor_num_layers: int,
                  predictor_ac_func: nn.Module,
                  predictor_dropout: float,
                  domain_label_size: int,
@@ -101,9 +108,15 @@ class MultiTaskHead(nn.Module):
             decoder_dropout: Dropout rate for the decoder.
             encoder_latent_dim: Latent dimensionality of the output of the
                 encoder.
+            predictor_num_layers: Number of linear layers to use in the
+                GesturePredictor.
             predictor_ac_func: Activation function for the predictor.
             predictor_dropout: Dropout rate for the predictor.
             domain_label_size: Dimensionality of the domain label.
+            bvp_output_layers: How many channels the BVP input actually has
+                which we should reconstruct for.
+            bvp_output_size: The size of the BVP output to reconstruct.
+            num_classes: Number of classes to predict.
         """
         super().__init__()
 
@@ -116,8 +129,9 @@ class MultiTaskHead(nn.Module):
                                bvp_output_size)
         self.predictor = GesturePredictor(predictor_ac_func,
                                           predictor_dropout,
+                                          num_classes=num_classes,
                                           in_features=in_features,
-                                          num_classes=num_classes)
+                                          num_layers=predictor_num_layers)
 
     def forward(self, z):
         y_bvp = self.decoder(z)

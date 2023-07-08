@@ -113,7 +113,8 @@ def encoder_config(dropout: float = 0.3,
 def mt_config(decoder_dropout: float = 0.3,
               decoder_activation_fn: str = "relu",
               predictor_dropout: float = 0.3,
-              predictor_activation_fn: str = "relu") -> dict[str, any]:
+              predictor_activation_fn: str = "relu",
+              predictor_num_layers: int = 3) -> dict[str, any]:
     """Multitask configuration for training.
 
     Args:
@@ -123,11 +124,13 @@ def mt_config(decoder_dropout: float = 0.3,
         predictor_dropout: Dropout rate to use for the predictor.
         predictor_activation_fn: Activation function to use for the predictor.
             Options are [`relu`, `leaky`, `selu`].
+        predictor_num_layers: Number of layers to use for the GesturePredictor.
     """
     return {"decoder_dropout": decoder_dropout,
             "decoder_activation_fn": decoder_activation_fn,
             "predictor_dropout": predictor_dropout,
-            "predictor_activation_fn": predictor_activation_fn}
+            "predictor_activation_fn": predictor_activation_fn,
+            "predictor_num_layers": predictor_num_layers}
 
 
 def embed_config(value_type: str = "known",
