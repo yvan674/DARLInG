@@ -21,8 +21,7 @@ from data_utils.widar_dataset import WidarDataset
 from data_utils.dataloader_collate import widar_collate_fn
 from utils.config_parser import parse_config_file
 from experiments.train import Training
-from models.encoder import AmpPhaseEncoder, BVPEncoder
-from models.multi_task import MultiTaskHead
+from models.model_builder import build_model
 from models.null_agent import NullAgent
 from models.known_domain_agent import KnownDomainAgent
 from models.ppo_agent import PPOAgent
@@ -51,12 +50,7 @@ CONV_NUM_FEATURES_MAPS = {
 }
 
 
-CONV_INPUT_MAP = {
-    "bvp_stack": 28,       # 28x20x20 dimensional BVP
-    "bvp_1d": 1,           # 1x28x400 dimensional BVP
-    "bvp_sum": 1,          # 1x20x20 dimensional BVP
-    "sti_transform": 540   # 540x1024x1024 dimensional signal-to-image transform
-}
+
 
 
 def run_training(config: dict[str, dict[str, any]]):
@@ -179,87 +173,10 @@ def run_training(config: dict[str, dict[str, any]]):
                                   collate_fn=widar_collate_fn)
 
     # SECTION Set up models
-    # Activation functions
-    activation_fn_map = {"relu": nn.ReLU,
-                         "leaky": nn.LeakyReLU,
-                         "selu": nn.SELU}
-    enc_ac_fn = activation_fn_map[config["encoder"]["activation_fn"]]
-    mt_dec_ac_fn = activation_fn_map[config["mt"]["decoder_activation_fn"]]
-    mt_pred_ac_fn = activation_fn_map[config["mt"]["predictor_activation_fn"]]
-
-    # VAE based model
-    # this is hard coded. There are 33 possible domain factors if the domain
-    # factors that are in the ground-truth data is encoded in one-hot.
-    # If embed_size is None, we assume we want to use the ground-truth
-    # domain factors
-    if config["embed"]["embed_size"] is not None:
-        domain_embedding_size = config["embed"]["embed_size"]
-    else:
-        domain_embedding_size = 33
-
-    # Encoder set up
-    if not bvp_pipeline:
-        input_type = "sti_transform"
-    else:
-        input_type = f"bvp_{bvp_agg}"
-    input_features = CONV_INPUT_MAP[input_type]
-    fc_input_size = CONV_NUM_FEATURES_MAPS[input_type]
-
-    if bvp_pipeline:
-        encoder = BVPEncoder(enc_ac_fn,
-                             config["encoder"]["dropout"],
-                             config["encoder"]["latent_dim"],
-                             fc_input_size,
-                             input_features)
-        mt_head_input_dim = config["encoder"]["latent_dim"]
-    else:
-        encoder = AmpPhaseEncoder(enc_ac_fn,
-                                  config["encoder"]["dropout"],
-                                  config["encoder"]["latent_dim"],
-                                  fc_input_size,
-                                  input_features)
-        mt_head_input_dim = 2 * config["encoder"]["latent_dim"]
-
-    null_head = MultiTaskHead(mt_dec_ac_fn,
-                              config["mt"]["decoder_dropout"],
-                              mt_head_input_dim,
-                              mt_pred_ac_fn,
-                              config["mt"]["predictor_dropout"],
-                              domain_embedding_size,
-                              input_features)
-    embed_head = MultiTaskHead(mt_dec_ac_fn,
-                               config["mt"]["decoder_dropout"],
-                               mt_head_input_dim,
-                               mt_pred_ac_fn,
-                               config["mt"]["predictor_dropout"],
-                               domain_embedding_size,
-                               input_features)
-
-    # Embedding agents
-    if config["embed"]["value_type"] in ("known", "one-hot"):
-        null_value = 0.
-    else:
-        null_value = None
-
-    null_agent = NullAgent(domain_embedding_size, null_value)
-    if config["embed"]["value_type"] == "known":
-        embed_agent = KnownDomainAgent(domain_embedding_size)
-    else:
-        embed_agent = PPOAgent(
-            input_size=config["encoder"]["latent_dim"],
-            domain_embedding_size=domain_embedding_size,
-            lr=config["embed"]["lr"],
-            anneal_lr=config["embed"]["anneal_lr"],
-            gamma=config["embed"]["gamma"],
-            gae_lambda=config["embed"]["gae_lambda"],
-            norm_advantage=config["embed"]["norm_advantage"],
-            clip_coef=config["embed"]["clip_coef"],
-            clip_value_loss=config["embed"]["clip_value_loss"],
-            entropy_coef=config["embed"]["entropy_coef"],
-            value_func_coef=config["embed"]["value_func_coef"],
-            max_grad_norm=config["embed"]["max_grad_norm"],
-            target_kl=config["embed"]["target_kl"],
-        )
+    encoder, null_head, embed_head, null_agent, embed_agent = build_model(
+        config,
+        train_dataset
+    )
 
     # Move models to device
     encoder.to(device)
