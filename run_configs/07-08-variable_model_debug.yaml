@@ -26,16 +26,20 @@ data:
     - "standard_scalar"
     - "transform"
     - "torch.from_numpy"
+
 encoder:
   dropout: 0.3
   latent_dim: 10
   activation_fn: "relu"
+  num_conv_layers: 3
+  initial_kernel_size: 5
 
 mt:
   decoder_dropout: 0.3
   decoder_activation_fn: "relu"
   predictor_dropout: 0.3
   predictor_activation_fn: "relu"
+  predictor_num_layers: 5
 
 embed:
   value_type: "known"
