@@ -89,7 +89,9 @@ def data_config(data_dir: str | Path = Path("../../data/"),
 
 def encoder_config(dropout: float = 0.3,
                    latent_dim: int = 10,
-                   activation_fn: str = "relu") -> dict[str, any]:
+                   activation_fn: str = "relu",
+                   num_conv_layers: int = None,
+                   initial_kernel_size: int = 3) -> dict[str, any]:
     """Encoder configuration for training.
 
     Args:
@@ -97,10 +99,15 @@ def encoder_config(dropout: float = 0.3,
         latent_dim: Dimension of the latent space.
         activation_fn: Activation function to use. Options are
             [`relu`, `leaky`, `selu`].
+        num_conv_layers: Number of convolutional layers to use.
+        initial_kernel_size: Initial kernel size to use for the convolutional
+            layers.
     """
     return {"dropout": dropout,
             "latent_dim": latent_dim,
-            "activation_fn": activation_fn}
+            "activation_fn": activation_fn,
+            "num_conv_layers": num_conv_layers,
+            "initial_kernel_size": initial_kernel_size}
 
 
 def mt_config(decoder_dropout: float = 0.3,
