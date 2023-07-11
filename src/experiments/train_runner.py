@@ -11,23 +11,16 @@ import os
 import warnings
 
 import torch
-import torch.nn as nn
 from torch.utils.data import DataLoader
 from torch.optim import Adam, SGD
 import wandb
-
 
 from data_utils.widar_dataset import WidarDataset
 from data_utils.dataloader_collate import widar_collate_fn
 from utils.config_parser import parse_config_file
 from experiments.train import Training
 from models.model_builder import build_model
-from models.null_agent import NullAgent
-from models.known_domain_agent import KnownDomainAgent
-from models.ppo_agent import PPOAgent
 from loss.multi_joint_loss import MultiJointLoss
-from signal_processing.pipeline import Pipeline
-from signal_processing.standard_scaler import StandardScaler
 from ui.tqdm_ui import TqdmUI
 
 
@@ -46,9 +39,6 @@ CONV_NUM_FEATURES_MAPS = {
 }
 
 
-
-
-
 def run_training(config: dict[str, dict[str, any]]):
     """Runs the training.
 
@@ -56,12 +46,12 @@ def run_training(config: dict[str, dict[str, any]]):
     # SECTION Initial stuff
     # Set tags
     if config["data"]["transformation"] is None:
-        if config["train"]["bvp_pipeline"]:
+        if config["data"]["bvp_pipeline"]:
             transformation = "bvp_pipeline"
         else:
             transformation = "no_transform"
     else:
-        transformation = config["data"]["transformation"]
+        transformation = str(config["data"]["transformation"])
     tags = [transformation, "training"]
     if config["debug"]["is_debug"]:
         warnings.warn("Running a debug run, `debug` will be appended to tags.")
@@ -90,39 +80,17 @@ def run_training(config: dict[str, dict[str, any]]):
 
     # SECTION Data
     data_dir = config["data"]["data_dir"]
-    bvp_pipeline = config["train"]["bvp_pipeline"]
+    bvp_pipeline = config["data"]["bvp_pipeline"]
     bvp_agg = config["data"]["bvp_agg"]
     dataset_type = config["data"]["dataset_type"]
-    # Set up the pipeline
-    if bvp_pipeline:
-        warnings.warn("Running with bvp_pipeline=True; no transformation will "
-                      "be applied.")
-        amp_pipeline = Pipeline([])
-        phase_pipeline = Pipeline([])
-    else:
-        # Set the signal to image transformation to use.
-
-
-        amp_pipeline = Pipeline.from_str_list(
-            config["data"]["amp_pipeline"],
-            config["transformation"],
-            StandardScaler(config["data"]["data_dir"], "amp"),
-            config["data"]["downsample_multiplier"]
-        )
-        phase_pipeline = Pipeline.from_str_list(
-            config["data"]["phase_pipeline"],
-            config["transformation"],
-            StandardScaler(config["data"]["data_dir"], "phase"),
-            config["data"]["downsample_multiplier"]
-        )
 
     train_dataset = WidarDataset(
         data_dir,
         "train",
         dataset_type,
         downsample_multiplier=config["data"]["downsample_multiplier"],
-        amp_pipeline=amp_pipeline,
-        phase_pipeline=phase_pipeline,
+        amp_pipeline=config["data"]["amp_pipeline"],
+        phase_pipeline=config["data"]["phase_pipeline"],
         return_csi=not bvp_pipeline,
         return_bvp=True,
         bvp_agg=bvp_agg
@@ -132,8 +100,8 @@ def run_training(config: dict[str, dict[str, any]]):
         "validation",
         dataset_type,
         downsample_multiplier=config["data"]["downsample_multiplier"],
-        amp_pipeline=amp_pipeline,
-        phase_pipeline=phase_pipeline,
+        amp_pipeline=config["data"]["amp_pipeline"],
+        phase_pipeline=config["data"]["phase_pipeline"],
         return_csi=not bvp_pipeline,
         return_bvp=True,
         bvp_agg=bvp_agg

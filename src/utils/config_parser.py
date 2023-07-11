@@ -1,3 +1,4 @@
+import warnings
 from pathlib import Path
 from typing import Optional
 
@@ -7,13 +8,15 @@ import yaml
 from signal_to_image.gaf_transform import GAF
 from signal_to_image.mtf_transform import MTF
 from signal_to_image.recurrence_plot_transform import RP
+from signal_processing.pipeline import Pipeline
+from signal_processing.standard_scaler import StandardScaler
 
 
 def train_config(batch_size: int = 64,
                  epochs: int = 15,
                  ui: str = "tqdm",
-                 checkpoint_dir: str | Path = Path("../../checkpoints/"),
-                 bvp_pipeline: bool = False) -> dict[str, any]:
+                 checkpoint_dir: str | Path = Path("../../checkpoints/")
+                 ) -> dict[str, any]:
     """Training configuration.
 
     A function is used to ensure defaults and clear documentation of possible
@@ -24,8 +27,6 @@ def train_config(batch_size: int = 64,
         epochs: Number of epochs to train for.
         ui: UI type to use during training.
         checkpoint_dir: Where to save checkpoints to.
-        bvp_pipeline: Whether to use the BVP pipeline. When BVP pipeline is
-            used, then CSI is ignored as the input data.
     """
     if type(checkpoint_dir) is str:
         checkpoint_dir = Path(checkpoint_dir)
@@ -33,8 +34,7 @@ def train_config(batch_size: int = 64,
     return {"batch_size": batch_size,
             "epochs": epochs,
             "ui": ui,
-            "checkpoint_dir": checkpoint_dir,
-            "bvp_pipeline": bvp_pipeline}
+            "checkpoint_dir": checkpoint_dir}
 
 
 def data_config(data_dir: str | Path = Path("../../data/"),
@@ -42,6 +42,7 @@ def data_config(data_dir: str | Path = Path("../../data/"),
                 downsample_multiplier: int = 2,
                 transformation: str = None,
                 bvp_agg: str = "stack",
+                bvp_pipeline: bool = False,
                 amp_pipeline: Optional[list[str]] = None,
                 phase_pipeline: Optional[list[str]] = None) -> dict[str, any]:
     """Data configuration for training.
@@ -58,6 +59,8 @@ def data_config(data_dir: str | Path = Path("../../data/"),
             transformation is used.
         bvp_agg: How to aggregate the BVP data. Options are
             [`stack`, `1d`, `sum`].
+        bvp_pipeline: Whether to use the BVP pipeline. When BVP pipeline is
+            used, then CSI is ignored as the input data.
         amp_pipeline: Pipeline to use for the amplitude data. This is provided
             as a list of strings, where each string is a function to call on
             the data. The possible functions are:
@@ -77,11 +80,7 @@ def data_config(data_dir: str | Path = Path("../../data/"),
     if dataset_type is None:
         raise ValueError("`dataset_type` parameter must be filled.")
 
-    if amp_pipeline is None:
-        amp_pipeline = ["torch.from_numpy"]
-    if phase_pipeline is None:
-        phase_pipeline = ["torch.from_numpy"]
-
+    # Set the signal to image transformation to use.
     match transformation:
         case "deepinsight":
             raise NotImplementedError
@@ -98,6 +97,30 @@ def data_config(data_dir: str | Path = Path("../../data/"),
                 f"valid options. Valid options are "
                 f"[`deepinsight`, `gaf`, `mtf`, `rp`]"
             )
+    if bvp_pipeline:
+        warnings.warn("Running with bvp_pipeline=True; no transformation will "
+                      "be applied.")
+        amp_pipeline = Pipeline([])
+        phase_pipeline = Pipeline([])
+    else:
+        if amp_pipeline is None:
+            amp_pipeline = ["torch.from_numpy"]
+        else:
+            amp_pipeline = Pipeline.from_str_list(
+                amp_pipeline,
+                transform,
+                StandardScaler(data_dir, "amp"),
+                downsample_multiplier
+            )
+        if phase_pipeline is None:
+            phase_pipeline = ["torch.from_numpy"]
+        else:
+            phase_pipeline = Pipeline.from_str_list(
+                phase_pipeline,
+                transform,
+                StandardScaler(data_dir, "phase"),
+                downsample_multiplier
+            )
 
     return {"data_dir": data_dir,
             "dataset_type": dataset_type,
@@ -105,7 +128,8 @@ def data_config(data_dir: str | Path = Path("../../data/"),
             "transformation": transform,
             "bvp_agg": bvp_agg,
             "amp_pipeline": amp_pipeline,
-            "phase_pipeline": phase_pipeline}
+            "phase_pipeline": phase_pipeline,
+            "bvp_pipeline": bvp_pipeline}
 
 
 
