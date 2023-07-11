@@ -28,10 +28,6 @@ from models.ppo_agent import PPOAgent
 from loss.multi_joint_loss import MultiJointLoss
 from signal_processing.pipeline import Pipeline
 from signal_processing.standard_scaler import StandardScaler
-# from signal_to_image.deepinsight_transform import DeepInsight
-from signal_to_image.gaf_transform import GAF
-from signal_to_image.mtf_transform import MTF
-from signal_to_image.recurrence_plot_transform import RP
 from ui.tqdm_ui import TqdmUI
 
 
@@ -105,32 +101,17 @@ def run_training(config: dict[str, dict[str, any]]):
         phase_pipeline = Pipeline([])
     else:
         # Set the signal to image transformation to use.
-        match transformation:
-            case "deepinsight":
-                raise NotImplementedError
-                # transform = DeepInsight()
-            case "gaf":
-                transform = GAF()
-            case "mtf":
-                transform = MTF()
-            case "rp":
-                transform = RP()
-            case _:
-                raise ValueError(
-                    f"Chosen transformation {transformation}is not one of the "
-                    f"valid options. Valid options are "
-                    f"[`deepinsight`, `gaf`, `mtf`, `rp`]"
-                )
+
 
         amp_pipeline = Pipeline.from_str_list(
             config["data"]["amp_pipeline"],
-            transform,
+            config["transformation"],
             StandardScaler(config["data"]["data_dir"], "amp"),
             config["data"]["downsample_multiplier"]
         )
         phase_pipeline = Pipeline.from_str_list(
             config["data"]["phase_pipeline"],
-            transform,
+            config["transformation"],
             StandardScaler(config["data"]["data_dir"], "phase"),
             config["data"]["downsample_multiplier"]
         )

@@ -3,6 +3,11 @@ from typing import Optional
 
 import yaml
 
+# from signal_to_image.deepinsight_transform import DeepInsight
+from signal_to_image.gaf_transform import GAF
+from signal_to_image.mtf_transform import MTF
+from signal_to_image.recurrence_plot_transform import RP
+
 
 def train_config(batch_size: int = 64,
                  epochs: int = 15,
@@ -77,10 +82,27 @@ def data_config(data_dir: str | Path = Path("../../data/"),
     if phase_pipeline is None:
         phase_pipeline = ["torch.from_numpy"]
 
+    match transformation:
+        case "deepinsight":
+            raise NotImplementedError
+            # transform = DeepInsight()
+        case "gaf":
+            transform = GAF()
+        case "mtf":
+            transform = MTF()
+        case "rp":
+            transform = RP()
+        case _:
+            raise ValueError(
+                f"Chosen transformation {transformation}is not one of the "
+                f"valid options. Valid options are "
+                f"[`deepinsight`, `gaf`, `mtf`, `rp`]"
+            )
+
     return {"data_dir": data_dir,
             "dataset_type": dataset_type,
             "downsample_multiplier": downsample_multiplier,
-            "transformation": transformation,
+            "transformation": transform,
             "bvp_agg": bvp_agg,
             "amp_pipeline": amp_pipeline,
             "phase_pipeline": phase_pipeline}
