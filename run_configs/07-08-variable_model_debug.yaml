@@ -6,7 +6,6 @@ train:
   epochs: 300
   ui: tqdm
   checkpoint_dir: "../../checkpoints/"
-  bvp_pipeline: false
 
 data:
   data_dir: "../../data"
@@ -14,6 +13,7 @@ data:
   downsample_multiplier: 2
   transformation: "gaf"
   bvp_agg: "sum"
+  bvp_pipeline: false
   amp_pipeline:
     - "lowpass_filter"
     - "standard_scalar"

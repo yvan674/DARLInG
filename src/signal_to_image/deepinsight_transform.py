@@ -27,6 +27,9 @@ class DeepInsight(SignalToImageTransformer):
         super().__init__()
         raise NotImplementedError
 
+    def __str__(self):
+        return "DeepInsight()"
+
     def transform(self, x: np.ndarray, **kwargs) -> np.ndarray:
         raise NotImplementedError
 

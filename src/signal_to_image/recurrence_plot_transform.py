@@ -24,6 +24,9 @@ class RP(SignalToImageTransformer):
         self.rp = RecurrencePlot(dimension, time_delay, threshold, percentage,
                                  flatten)
 
+    def __str__(self):
+        return "RecurrencePlotTransform()"
+
     def transform(self, x: np.ndarray, **kwargs) -> np.ndarray:
         # Input is (time, channels, antennas)
         # RP requires (n_samples, n_timestamps)

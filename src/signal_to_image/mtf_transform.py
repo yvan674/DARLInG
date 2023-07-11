@@ -1,4 +1,4 @@
-"""MTS Transform.
+"""MTF Transform.
 Turns the Wi-Fi RSSI Fingerprint into an image using a Markov Transition Field
 transformation.
 """
@@ -18,6 +18,9 @@ class MTF(SignalToImageTransformer):
         super().__init__()
         self.mtf = MarkovTransitionField(image_size, n_bins, strategy,
                                          overlapping, flatten)
+
+    def __str__(self):
+        return "MarkovTransitionField()"
 
     def transform(self, x: np.ndarray, **kwargs) -> np.ndarray:
         # Input is (time, channels, antennas)

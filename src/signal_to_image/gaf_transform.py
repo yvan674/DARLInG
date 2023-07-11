@@ -22,6 +22,9 @@ class GAF(SignalToImageTransformer):
                                        overlapping=overlapping,
                                        flatten=flatten)
 
+    def __str__(self):
+        return "GramianAngularField()"
+
     def transform(self, x: np.ndarray, **kwargs) -> np.ndarray:
         # Input is (time, channels, antennas)
         # gaf requires (n_samples, n_timestamps)
