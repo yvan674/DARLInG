@@ -26,7 +26,7 @@ if __name__ == '__main__':
     config = {"train": {"checkpoint_dir": "../checkpoints",
                         "epochs": 150,
                         "ui": "tqdm"},
-              "data": {},
+              "data": {"data_dir": data_dir},
               "encoder": {},
               "mt": {},
               "embed": {},

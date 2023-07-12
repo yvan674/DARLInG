@@ -39,6 +39,7 @@ def calc_encoder_fc_size(input_img: torch.Tensor,
     temp_encoder = Encoder(input_dim=encoder_input_dim,
                            initial_kernel_size=initial_kernel_size,
                            conv_output_sizes=conv_output_sizes)
+    temp_encoder.eval()
     with torch.no_grad():
         h = temp_encoder.convnet(input_img.unsqueeze(0))
         fc_input_size = h.shape[1]
@@ -72,19 +73,24 @@ def build_model(config: dict[str, any],
         domain_embedding_size = 33
 
     # Figure out BVP aggregration structure
-    bvp_pipeline = config["train"]["bvp_pipeline"]
+    bvp_pipeline = config["data"]["bvp_pipeline"]
 
     x_amp, x_phase, x_bvp, x_info = train_dataset[0]
 
     # SECTION Encoder setup
-    encoder_input_dim = x_amp.shape[0]
+    if bvp_pipeline:
+        encoder_input_dim = x_bvp.shape[0]
+        input_img = x_bvp
+    else:
+        encoder_input_dim = x_amp.shape[0]
+        input_img = x_amp
     num_conv_layers = config["encoder"]["num_conv_layers"]
     if num_conv_layers is None:
         conv_output_sizes = None
     else:
         conv_output_sizes = [2 ** (i + 6) for i in range(num_conv_layers)]
     encoder_fc_input_size = calc_encoder_fc_size(
-        x_amp,
+        input_img,
         config["encoder"]["initial_kernel_size"],
         conv_output_sizes,
         encoder_input_dim

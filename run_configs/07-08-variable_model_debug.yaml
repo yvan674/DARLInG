@@ -13,7 +13,7 @@ data:
   downsample_multiplier: 2
   transformation: "gaf"
   bvp_agg: "sum"
-  bvp_pipeline: false
+  bvp_pipeline: true
   amp_pipeline:
     - "lowpass_filter"
     - "standard_scalar"

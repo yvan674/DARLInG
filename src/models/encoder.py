@@ -114,8 +114,8 @@ class Encoder(nn.Module):
                             [(conv_output_sizes[i], conv_output_sizes[i + 1])
                              for i in range(len(conv_output_sizes) - 1)]
 
-        kernel_sizes = [initial_kernel_size
-                        for _ in range(len(conv_output_sizes))] + [3, 3]
+        kernel_sizes = [initial_kernel_size, initial_kernel_size] + \
+                       [3 for _ in range(len(conv_output_sizes) - 2)]
 
         self.convnet = nn.Sequential()
 
@@ -141,7 +141,7 @@ class Encoder(nn.Module):
     def forward(self, x):
         """Forward pass. """
         h = self.convnet(x)
-        # h = self.fc(h)
+        h = h.flatten(1)
         mu = self.fc_mu(h)
         log_sigma = self.fc_sigma(h)
         z = self.reparameterization(mu, log_sigma)

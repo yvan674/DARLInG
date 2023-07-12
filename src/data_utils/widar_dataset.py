@@ -48,7 +48,8 @@ class WidarDataset(Dataset):
         2) 3-D array of phase shifts with the same shape.
         3) BVP as 3-D tensor of shape [20, 20, T], where T is the timestep
         4) Information about the sample as a dictionary with keys [`user`,
-           `room_num`, `date`, `torso_location`, `face_orientation`, `gesture`]
+           `room_num`, `date`, `torso_location`, `face_orientation`, `gesture`,
+           `csi_fps`]
 
         1 and 2 has a shape of [n, 30, 18], where n represents the time
         series length, 30 the number of subcarrier channels, and 18 the number
@@ -63,7 +64,7 @@ class WidarDataset(Dataset):
         Args:
             root_path: Root path of the data directory (e.g., DARLInG/data/)
             split_name: Name of the split this dataset should be. Options are
-                [`train`, `validation`, `test_room`, `test_location`]
+                [`train`, `validation`, `test_room`, `test_location`, `test`]
             dataset_type: Type of the dataset. Options are [`small`,
                 `single_domain`, `full`].
             downsample_multiplier: If downsampling is desired, the multiplier
@@ -83,7 +84,7 @@ class WidarDataset(Dataset):
         start_time = perf_counter()
         self.data_path = root_path
         if split_name not in ("train", "validation",
-                              "test_room", "test_location"):
+                              "test_room", "test_location", "test"):
             raise ValueError(f"`{split_name}` not one of allowed options for "
                              f"parameter `split_name`")
         self.split_name = split_name
@@ -136,11 +137,9 @@ class WidarDataset(Dataset):
              CSI [pn, cn, an, 1] where pn is the packet number, cn the
              subcarrier channel number, and an the antenna number.
          """
-        if self.dataset_type == "small":
+        if self.dataset_type == "small" or self.dataset_type == "single_domain":
             # widar_small moves the files to a different location, so we
             # overwrite it here.
-            csi_file_path = self.data_path / csi_file_path.name
-        elif self.dataset_type == "single_domain":
             csi_file_path = self.data_path / csi_file_path.name
         csidata = csiread.Intel(str(csi_file_path), if_report=False)
         csidata.read()
@@ -186,9 +185,8 @@ class WidarDataset(Dataset):
                 bvp = np.sum(bvp, axis=2, dtype=np.float32)
                 out = bvp.reshape((1, 20, 20))
             case _:
-                raise ValueError("Never should've come here - Some bandit in "
+                raise ValueError("Never should've come here - Bandit from "
                                  "Skyrim")
-
         return out
 
 
@@ -235,9 +233,10 @@ class WidarDataset(Dataset):
         data_records_index, csi_index = self.index_to_csi_index[item]
 
         data_record = self.data_records[data_records_index]
+        csi_fps = data_record[f"csi_paths_{csi_index}"]
         if self.return_csi:
             csi_files = [self._load_csi_file(fp)
-                         for fp in data_record[f"csi_paths_{csi_index}"]]
+                         for fp in csi_fps]
             csi = self._stack_csi_arrays(csi_files)
             csi = csi.copy()  # reset strides
             amp = np.absolute(csi).astype(np.float32)
@@ -254,6 +253,7 @@ class WidarDataset(Dataset):
         info = {k: data_record[k]
                 for k in ("user", "room_num", "date", "torso_location",
                           "face_orientation")}
+        info["csi_fps"] = csi_fps
 
         # Gesture must be in int format and subtracted by 1 to be 0-indexed.
         info["gesture"] = data_record["gesture"]

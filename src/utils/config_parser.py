@@ -91,9 +91,11 @@ def data_config(data_dir: str | Path = Path("../../data/"),
             transform = MTF()
         case "rp":
             transform = RP()
+        case None:
+            transform = None
         case _:
             raise ValueError(
-                f"Chosen transformation {transformation}is not one of the "
+                f"Chosen transformation {transformation} is not one of the "
                 f"valid options. Valid options are "
                 f"[`deepinsight`, `gaf`, `mtf`, `rp`]"
             )
@@ -202,7 +204,6 @@ def embed_config(value_type: str = "known",
             embed_agent_value is `known` and is automatically replaced by 33.
         epochs: Number of epochs to train the embedding agent for.
         lr: Learning rate for the agent optimizer.
-        num_steps: Number of steps per policy rollout.
         anneal_lr: Whether to use learning rate annealing.
         gamma: Discount factor gamma in the PPO algorithm.
         gae_lambda: General advantage estimation lambda value.
