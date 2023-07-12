@@ -226,6 +226,10 @@ def process_samples(sample_records: dict[str, any],
 def parse_single_domain(widar_dir: Path):
     """Select files for a single domain dataset.
 
+    Notes:
+        Single domain doesn't have enough samples for a true test set. We
+        only have a train-validation set here.
+
     Args:
         widar_dir: Path to the Widar3.0 dataset.
 
@@ -253,23 +257,19 @@ def parse_single_domain(widar_dir: Path):
                                   bvp_dir,
                                   csi_dir)
 
-    out = {}
-    non_test, out["test"] = train_test_split(output_data["index_to_csi_index"],
-                                             test_size=0.2,
-                                             random_state=0)
-    out["train"], out["validation"] = train_test_split(non_test,
-                                                       test_size=0.2,
-                                                       random_state=42)
+    train_data, validation_data = train_test_split(
+        output_data["index_to_csi_index"],
+        test_size=0.2,
+        random_state=0
+    )
+
 
     splits = {"train": {"samples": output_data["samples"],
-                        "num_total_samples": len(out["train"]),
-                        "index_to_csi_index": out["train"]},
+                        "num_total_samples": len(train_data),
+                        "index_to_csi_index": train_data},
               "validation": {"samples": output_data["samples"],
-                             "num_total_samples": len(out["validation"]),
-                             "index_to_csi_index": out["validation"]},
-              "test": {"samples": output_data["samples"],
-                       "num_total_samples": len(out["test"]),
-                       "index_to_csi_index": out["test"]}
+                             "num_total_samples": len(validation_data),
+                             "index_to_csi_index": validation_data},
               }
 
     for split in splits.keys():
