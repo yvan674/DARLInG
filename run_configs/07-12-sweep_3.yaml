@@ -1,0 +1,91 @@
+program: utils/sweep_runner.py
+method: bayes
+metric:
+  goal: maximize
+  name: valid_embed_f1
+parameters:
+  optim_loss.optimizer:
+    values:
+      - sgd
+      - adam
+    distribution: categorical
+  optim_loss.alpha:
+    max: 0
+    min: -10
+    distribution: log_uniform
+  optim_loss.beta:
+    max: 0
+    min: -10
+    distribution: log_uniform
+  optim_loss.lr:
+    max: 0
+    min: -10
+    distribution: log_uniform
+  encoder.activation_fn:
+    values:
+      - relu
+      - selu
+      - leaky
+    distribution: categorical
+  encoder.latent_dim:
+    max: 100
+    min: 10
+    distribution: int_uniform
+  encoder.dropout:
+    max: 0.6
+    min: 0.15
+    distribution: uniform
+  encoder.num_conv_layers:
+    min: 3
+    max: 6
+    distribution: int_uniform
+  encoder.initial_kernel_size:
+    min: 3
+    max: 9
+    distribution: int_uniform
+
+  train.batch_size:
+    values:
+      - 16
+      - 32
+    distribution: categorical
+  embed.value_type:
+    values:
+      - known
+    distribution: categorical
+  data.downsample_multiplier:
+    value: 2
+    distribution: constant
+  data.dataset_type:
+    value: "small"
+    distribution: constant
+  data.bvp_agg:
+    value: sum
+    distribution: constant
+  data.bvp_pipeline:
+    value: "true"
+    distribution: constant
+  mt.predictor_activation_fn:
+    values:
+      - relu
+      - leaky
+      - selu
+    distribution: categorical
+  mt.decoder_activation_fn:
+    values:
+      - relu
+      - leaky
+      - selu
+    distribution: categorical
+  mt.predictor_dropout:
+    max: 0.6
+    min: 0.15
+    distribution: uniform
+  mt.decoder_dropout:
+    max: 0.6
+    min: 0.15
+    distribution: uniform
+  mt.predictor_num_layers:
+    min: 3
+    max: 8
+    distribution: int_uniform
