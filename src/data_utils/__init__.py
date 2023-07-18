@@ -82,6 +82,22 @@ SINGLE_DOMAIN_SELECTION = {
     "face_orientation": {"1"}
 }
 
+# Single user leave-out validation
+TRAINING_SULO = {
+    "user": {"1", "2", "4", "5", "10", "11", "12", "13", "14", "15", "16",
+             "17"},
+    "room_num": {1},
+    "torso_location": {"1", "2", "3", "4", "5"},
+    "gesture": {"1", "2", "3", "4", "5", "6"}
+}
+
+VALIDATION_SULO = {
+    "user": {"5"},
+    "room_num": {1},
+    "torso_location": {"1", "2", "3", "4", "5"},
+    "gesture": {"1", "2", "3", "4", "5", "6"}
+}
+
 
 def calculate_total_dirs(csi_dir: Path) -> int:
     """Calculates total dirs to traverse for use by a progress bar."""
