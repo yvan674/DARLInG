@@ -107,20 +107,17 @@ class WidarDataset(Dataset):
         self.amp_pipeline = amp_pipeline
         self.phase_pipeline = phase_pipeline
 
-        if dataset_type == "small":
-            data_dir = root_path / "widar_small"
-            index_fp = data_dir / f"{split_name}_index_small.pkl"
-            self.data_path = data_dir / split_name
-        elif dataset_type == "single_domain":
-            data_dir = root_path / "widar_single_domain"
-            index_fp = data_dir / f"{split_name}_index_single_domain.pkl"
-            self.data_path = data_dir / split_name
-        elif dataset_type == "full":
-            index_fp = self.data_path / f"{split_name}_index.pkl"
-        else:
+        if dataset_type not in ("small", "single_domain", "single_user",
+                                "full"):
             raise ValueError(f"Dataset type {dataset_type} is not one of the"
                              f"possible options [`small`, `single_domain`, "
                              f"`full`].")
+        if dataset_type == "full":
+            index_fp = self.data_path / f"{split_name}_index.pkl"
+        else:
+            data_dir = root_path / f"widar_{dataset_type}"
+            index_fp = data_dir / f"{split_name}_index_{dataset_type}.pkl"
+            self.data_path = data_dir / split_name
 
         with open(index_fp, "rb") as f:
             index_file: dict[str, any] = pickle.load(f)
@@ -137,7 +134,7 @@ class WidarDataset(Dataset):
              CSI [pn, cn, an, 1] where pn is the packet number, cn the
              subcarrier channel number, and an the antenna number.
          """
-        if self.dataset_type == "small" or self.dataset_type == "single_domain":
+        if self.dataset_type != "full":
             # widar_small moves the files to a different location, so we
             # overwrite it here.
             csi_file_path = self.data_path / csi_file_path.name
@@ -188,7 +185,6 @@ class WidarDataset(Dataset):
                 raise ValueError("Never should've come here - Bandit from "
                                  "Skyrim")
         return out
-
 
     def __str__(self):
         return f"WidarDataset: {self.split_name}" \

@@ -53,7 +53,7 @@ def data_config(data_dir: str | Path = Path("../../data/"),
     Args:
         data_dir: Path to the data directory.
         dataset_type: Type of the dataset. Options are [`small`,
-                `single_domain`, `full`].
+                `single_domain`, `single_user`, `full`].
         downsample_multiplier: How much to downsample the data by.
         transformation: Transformation to use on the data. If None, no
             transformation is used.
