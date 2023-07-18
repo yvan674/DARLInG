@@ -51,7 +51,8 @@ from tqdm import tqdm
 
 from data_utils import TRAINING_SELECTION, VALIDATION_SELECTION, \
     TEST_ROOM_SELECTION, TEST_LOCATION_SELECTION, \
-    ROOM_DATE_MAPPING, DATE_ROOM_MAPPING, SINGLE_DOMAIN_SELECTION
+    ROOM_DATE_MAPPING, DATE_ROOM_MAPPING, SINGLE_DOMAIN_SELECTION, \
+    TRAINING_SULO, VALIDATION_SULO
 
 
 def parse_args() -> Namespace:
@@ -66,6 +67,9 @@ def parse_args() -> Namespace:
     p.add_argument("-s", "--single_domain", action="store_true",
                    help="Set to only get samples of a single domain, in this "
                         "case user 2 in room 1.")
+    p.add_argument("-u", "--single_user", action="store_true",
+                   help="Sets to single-user leave-out, where user 5 is left "
+                        "out from room 1's training set.")
 
     return p.parse_args()
 
@@ -277,26 +281,25 @@ def parse_single_domain(widar_dir: Path):
             pickle.dump(splits[split], f)
 
 
-def parse_files(widar_dir: Path, num_repetitions: int | None):
+def parse_files(widar_dir: Path, num_repetitions: int | None,
+                splits: tuple, dataset_type: str):
     """Select files based on the selection criteria as a Pandas DataFrame.
-
-    Args:
-        widar_dir: Path to the Widar3.0 dataset.
-        num_repetitions: Number of repetitions to choose for each sample. If
-            None, all samples are used.
 
     A list of dicts containing file data is saved. The dictionary has keys:
     [user, room_num, date, torso_location, face_orientation, gesture,
     csi_stems, csi_paths_n, bvp_path_n,].
     There may be csi_paths_0, csi_paths_1, etc. based on num_repetitions.
+
+    Args:
+        widar_dir: Path to the Widar3.0 dataset.
+        num_repetitions: Number of repetitions to choose for each sample. If
+            None, all samples are used.
+        splits: The desired splits to generate.
+        dataset_type: The type of dataset this is generating. Used as the index
+            file suffix.
     """
     csi_dir = widar_dir / "CSI"
     bvp_dir = widar_dir / "BVP"
-
-    splits = (("train", TRAINING_SELECTION),
-              ("validation", VALIDATION_SELECTION),
-              ("test_room", TEST_ROOM_SELECTION),
-              ("test_location", TEST_LOCATION_SELECTION))
 
     for split_name, split in splits:
         # Figure out which date directories to look into
@@ -314,9 +317,8 @@ def parse_files(widar_dir: Path, num_repetitions: int | None):
                                       bvp_dir,
                                       csi_dir)
 
-        suffix = "_small" if num_repetitions is not None else ""
-
-        with open(widar_dir / f"{split_name}_index{suffix}.pkl", "wb") as f:
+        with open(widar_dir / f"{split_name}_index{dataset_type}.pkl",
+                  "wb") as f:
             pickle.dump(output_data, f)
 
 
@@ -326,4 +328,16 @@ if __name__ == '__main__':
     if args.single_domain:
         parse_single_domain(args.DATA_FP)
     else:
-        parse_files(args.DATA_FP, args.num_repetitions)
+        if args.single_user:
+            select = (("train", TRAINING_SULO),
+                      ("validation", VALIDATION_SULO))
+            suffix = "_single_user"
+
+        else:
+            select = (("train", TRAINING_SELECTION),
+                      ("validation", VALIDATION_SELECTION),
+                      ("test_room", TEST_ROOM_SELECTION),
+                      ("test_location", TEST_LOCATION_SELECTION))
+            suffix = ""
+        suffix += "_small" if args.num_repetitions is not None else ""
+        parse_files(args.DATA_FP, args.num_repetitions, select, suffix)
