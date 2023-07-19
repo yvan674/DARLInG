@@ -18,6 +18,9 @@ class MultiJointLoss(nn.Module):
         The ratio between reconstruction and classification is defined by
         parameter alpha and the ratio between each head is defined by beta.
 
+        The output of the embed losses are NoneType if no embed values are
+        given.
+
         Args:
             alpha: The ratio between reconstruction and classification loss.
                 The final loss is calculated as:
@@ -48,18 +51,22 @@ class MultiJointLoss(nn.Module):
                 target_label: torch.Tensor,
                 null_img: torch.Tensor,
                 null_label: torch.Tensor,
-                embed_img: torch.Tensor,
-                embed_label: torch.Tensor,
+                embed_img: torch.Tensor | None,
+                embed_label: torch.Tensor | None,
                 mus: torch.Tensor,
                 log_sigmas: torch.Tensor) -> dict[str, torch.Tensor]:
         """Calculates ELBO loss based on Practical 5.2 of 2AMM10 Deep Learning.
         """
         # First calculate reconstruction loss
         null_reconstr_loss = self.mse(target_img, null_img)
-        embed_reconstr_loss = self.mse(target_img, embed_img)
-        reconstr_loss = self.proportional(null_reconstr_loss,
-                                          embed_reconstr_loss,
-                                          self.beta, self.neg_beta)
+        if embed_img is not None:
+            embed_reconstr_loss = self.mse(target_img, embed_img)
+            reconstr_loss = self.proportional(null_reconstr_loss,
+                                              embed_reconstr_loss,
+                                              self.beta, self.neg_beta)
+        else:
+            embed_reconstr_loss = None
+            reconstr_loss = null_reconstr_loss
 
         # Reshape mus and log_sigmas to be flat
         mus = mus.reshape(-1)
@@ -70,26 +77,39 @@ class MultiJointLoss(nn.Module):
 
         # Given reconstruction and KL, calculate elbo loss
         null_elbo_loss = null_reconstr_loss + kl_loss
-        embed_elbo_loss = embed_reconstr_loss + kl_loss
-        elbo_loss = reconstr_loss + kl_loss
+        if embed_img is not None:
+            embed_elbo_loss = embed_reconstr_loss + kl_loss
+            elbo_loss = reconstr_loss + kl_loss
+        else:
+            embed_elbo_loss = None
+            elbo_loss = null_reconstr_loss
 
         # Cross entropy loss on labels
         null_class_loss = self.ce(null_label, target_label)
-        embed_class_loss = self.ce(embed_label, target_label)
-        class_loss = self.proportional(null_class_loss,
-                                       embed_class_loss,
-                                       self.beta, self.neg_beta)
+        if embed_label is not None:
+            embed_class_loss = self.ce(embed_label, target_label)
+            class_loss = self.proportional(null_class_loss,
+                                           embed_class_loss,
+                                           self.beta, self.neg_beta)
+        else:
+            embed_class_loss = None
+            class_loss = null_class_loss
 
         # Calculate joint losses
         null_joint_loss = self.proportional(null_elbo_loss,
                                             null_class_loss,
                                             self.alpha, self.neg_alpha)
-        embed_joint_loss = self.proportional(embed_elbo_loss,
-                                             embed_class_loss,
-                                             self.alpha, self.neg_alpha)
-        joint_loss = self.proportional(elbo_loss,
-                                       class_loss,
-                                       self.alpha, self.neg_alpha)
+        if embed_img is not None:
+            embed_joint_loss = self.proportional(embed_elbo_loss,
+                                                 embed_class_loss,
+                                                 self.alpha, self.neg_alpha)
+            joint_loss = self.proportional(elbo_loss,
+                                           class_loss,
+                                           self.alpha, self.neg_alpha)
+        else:
+            embed_joint_loss = None
+            joint_loss = null_joint_loss
+
 
 
         return {"elbo_loss": elbo_loss,

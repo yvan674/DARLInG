@@ -184,6 +184,7 @@ def mt_config(decoder_dropout: float = 0.3,
 
 def embed_config(value_type: str = "known",
                  embed_size: Optional[int] = None,
+                 start_epoch: int = 0,
                  epochs: int = 1,
                  critic_num_layers: int = 3,
                  critic_dropout: float = 0.3,
@@ -208,6 +209,10 @@ def embed_config(value_type: str = "known",
         embed_size: Size of the embedding. None is only allowed if the
             embed_agent_value is `known` and is automatically replaced by 33.
         epochs: Number of epochs to train the embedding agent for.
+        start_epoch: Start training the agent after how many epochs. This is
+            because the output of the decoder may not make sense before a few
+            epochs of training and it does not make sense to train the agent
+            on nonsensical inputs.
         critic_num_layers: Number of layers to use for the critic.
         critic_dropout: Dropout rate to use for the critic.
         actor_num_layers: Number of layers to use for the actor.
@@ -229,6 +234,7 @@ def embed_config(value_type: str = "known",
         embed_size = 33
     return {"value_type": value_type,
             "embed_size": embed_size,
+            "start_epoch": start_epoch,
             "epochs": epochs,
             "critic_num_layers": critic_num_layers,
             "critic_dropout": critic_dropout,

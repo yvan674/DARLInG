@@ -122,7 +122,7 @@ def run_training(config: dict[str, dict[str, any]]):
                                   collate_fn=widar_collate_fn)
 
     # SECTION Set up models
-    encoder, null_head, embed_head, null_agent, embed_agent = build_model(
+    encoder, null_head, null_agent, embed_agent = build_model(
         config,
         train_dataset
     )
@@ -130,7 +130,6 @@ def run_training(config: dict[str, dict[str, any]]):
     # Move models to device
     encoder.to(device)
     null_head.to(device)
-    embed_head.to(device)
     null_agent.to(device)
     embed_agent.to(device)
 
@@ -143,7 +142,6 @@ def run_training(config: dict[str, dict[str, any]]):
 
     encoder_optimizer = optimizer_map[optimizer](encoder.parameters(), lr=lr)
     null_optimizer = optimizer_map[optimizer](null_head.parameters(), lr=lr)
-    embed_optimizer = optimizer_map[optimizer](embed_head.parameters(), lr=lr)
 
     # SECTION UI
     initial_data = {"train_loss": float("nan"),
@@ -176,12 +174,13 @@ def run_training(config: dict[str, dict[str, any]]):
     # SECTION Run training
     checkpoint_dir = config["train"]["checkpoint_dir"]
     training = Training(
-        bvp_pipeline,                                         # BVP Pipeline
-        encoder, null_head, embed_head,                       # Models
-        embed_agent, null_agent,                              # Embed agents
-        encoder_optimizer, null_optimizer, embed_optimizer,   # Optimizers
-        loss_fn,                                              # Loss function
-        run, checkpoint_dir, ui                               # Utils
+        bvp_pipeline,                                     # BVP Pipeline
+        encoder, null_head,                               # Models
+        embed_agent, null_agent,                          # Embed agents
+        encoder_optimizer, null_optimizer,                # Optimizers
+        loss_fn,                                          # Loss function
+        run, checkpoint_dir, ui,                          # Utils
+        agent_start_epoch=config["embed"]["start_epoch"]  # Embed config
     )
     training.train(
         train_embedding_agent=config["embed"]["value_type"] != "known",

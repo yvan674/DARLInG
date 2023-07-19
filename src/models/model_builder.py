@@ -135,18 +135,6 @@ def build_model(config: dict[str, any],
         domain_label_size=domain_embedding_size
     )
 
-    embed_head = MultiTaskHead(
-        decoder_ac_func=mt_dec_ac_fn,
-        decoder_dropout=config["mt"]["decoder_dropout"],
-        decoder_output_layers=encoder_input_dim,
-        decoder_output_size=input_img.shape[1:],
-        encoder_latent_dim=mt_input_head_dim,
-        predictor_num_layers=config["mt"]["predictor_num_layers"],
-        predictor_ac_func=mt_pred_ac_fn,
-        predictor_dropout=config["mt"]["predictor_dropout"],
-        domain_label_size=domain_embedding_size
-    )
-
     # SECTION Embed Agents
     if config["embed"]["value_type"] in ("known", "one-hot"):
         null_value = 0.
@@ -180,4 +168,4 @@ def build_model(config: dict[str, any],
     print(f"Completed model building. "
           f"Took {perf_counter() - start_time:.2f} s.")
 
-    return encoder, null_head, embed_head, null_agent, embed_agent
+    return encoder, null_head, null_agent, embed_agent

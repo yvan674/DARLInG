@@ -2,6 +2,7 @@
 
 Training function for DARLInG.
 """
+import copy
 import math
 from pathlib import Path
 
@@ -31,17 +32,16 @@ class Training:
                  bvp_pipeline: bool,
                  encoder: nn.Module,
                  null_head: nn.Module,
-                 embed_head: nn.Module,
                  embedding_agent: BaseEmbeddingAgent,
                  null_agent: BaseEmbeddingAgent,
                  encoder_optimizer: Optimizer,
                  null_head_optimizer: Optimizer,
-                 embed_head_optimizer: Optimizer,
                  loss_func: MultiJointLoss,
                  logging: Run,
                  checkpoint_dir: Path,
                  ui: BaseUI,
-                 num_classes: int = 6):
+                 num_classes: int = 6,
+                 agent_start_epoch: int = 0):
         """Performs training on DARLInG.
 
         Args:
@@ -50,32 +50,31 @@ class Training:
             encoder: The CNN encoder which encodes the imaged time series
                 data.
             null_head: The MT head which receives the null domain embedding.
-            embed_head: The MT head which recieves some non-null domain
-                embedding.
             embedding_agent: The agent which performs the domain embedding.
             null_agent: The agent providing the null embedding.
             encoder_optimizer: Optimizer for the CNN encoder.
             null_head_optimizer: Optimizer for the null domain MT head.
-            embed_head_optimizer: Optimizer for the non-null domain MT head.
             loss_func: The ELBO classification loss object.
             logging: The logger to use for logging.
             checkpoint_dir: The directory to save checkpoints to.
             ui: The UI to use to visualize training.
+            agent_start_epoch: Which epoch to start training the agent.
         """
         self.bvp_pipeline = bvp_pipeline
         self.encoder = encoder
         self.null_head = null_head
-        self.embed_head = embed_head
+        self.embed_head = None
         self.embedding_agent = embedding_agent
         self.null_agent = null_agent
         self.encoder_optimizer = encoder_optimizer
         self.null_head_optimizer = null_head_optimizer
-        self.embed_head_optimizer = embed_head_optimizer
+        self.embed_head_optimizer = None
         self.loss_func = loss_func
         self.logging = logging
         self.checkpoint_dir = checkpoint_dir
         self.ui = ui
         self.num_classes = num_classes
+        self.agent_start_epoch = agent_start_epoch
 
         # Keep track of some statistics to ensure only the best checkpoint is
         # saved
@@ -148,9 +147,12 @@ class Training:
         bvp_null, gesture_null = self.null_head(
             torch.cat([z, null_embedding], dim=1)
         )
-        bvp_embed, gesture_embed = self.embed_head(
-            torch.cat([z, domain_embedding], dim=1)
-        )
+        if self.embed_head is not None:
+            bvp_embed, gesture_embed = self.embed_head(
+                torch.cat([z, domain_embedding], dim=1)
+            )
+        else:
+            bvp_embed, gesture_embed = None, None
 
         # Calculate losses
         loss_dict = self.loss_func(
@@ -198,26 +200,33 @@ class Training:
             # Backward pass
             self.encoder_optimizer.zero_grad()
             self.null_head_optimizer.zero_grad()
-            self.embed_head_optimizer.zero_grad()
+            if self.embed_head_optimizer is not None:
+                self.embed_head_optimizer.zero_grad()
             pass_result["joint_loss"].backward()
             self.encoder_optimizer.step()
             self.null_head_optimizer.step()
-            self.embed_head_optimizer.step()
+            if self.embed_head_optimizer is not None:
+                self.embed_head_optimizer.step()
 
             # Calculate metrics
             elbo_loss_value = pass_result["elbo_loss"].item()
             null_loss_value = pass_result["null_loss"].item()
-            embed_loss_value = pass_result["embed_loss"].item()
             joint_loss_value = (elbo_loss_value
-                                + null_loss_value
-                                + embed_loss_value)
-            loss_diff = embed_loss_value - null_loss_value
-
+                                + null_loss_value)
             # Check if any loss values are nan
-            should_exit = torch.isnan(elbo_loss_value) \
-                or torch.isnan(null_loss_value) \
-                or torch.isnan(embed_loss_value) \
-                or torch.isnan(joint_loss_value)
+            should_exit = (np.isnan(elbo_loss_value)
+                           or np.isnan(null_loss_value)
+                           or np.isnan(joint_loss_value))
+
+            if pass_result["embed_loss"] is not None:
+                embed_loss_value = pass_result["embed_loss"].item()
+                joint_loss_value += embed_loss_value
+                loss_diff = embed_loss_value - null_loss_value
+                if np.isnan(embed_loss_value):
+                    should_exit = True
+            else:
+                loss_diff = 0.0
+                embed_loss_value = float("nan")
 
             loss_vals = {
                 "train_loss": joint_loss_value,
@@ -247,9 +256,8 @@ class Training:
                 ))
 
             current_time = perf_counter()
-            rate = len(info["user"]) / (current_time - start_time)
 
-            ui_data = {"epoch": epoch, "batch": batch_idx, "rate": rate}
+            ui_data = {"epoch": epoch, "batch": batch_idx}
             ui_data.update(**loss_vals)
 
             self.ui.update_data(ui_data)
@@ -259,6 +267,8 @@ class Training:
             if should_exit:
                 self.ui.update_status("Joint loss is nan, exiting...")
                 return False
+
+        return True
 
     def _train_agent(self, train_loader: DataLoader, device: torch.device,
                      epoch: int, agent_epochs: int, total_epochs: int):
@@ -445,11 +455,13 @@ class Training:
             # Extract data only from the losses
             elbo_loss_value = pass_result["elbo_loss"].item()
             null_loss_value = pass_result["null_loss"].item()
-            embed_loss_value = pass_result["embed_loss"].item()
-            joint_loss_value = (elbo_loss_value
-                                + null_loss_value
-                                + embed_loss_value)
-
+            joint_loss_value = elbo_loss_value + null_loss_value
+            # Handle embed, since it may be None.
+            if pass_result["embed_loss"] is not None:
+                embed_loss_value = pass_result["embed_loss"].item()
+                joint_loss_value += embed_loss_value
+            else:
+                embed_loss_value = None
             # Add stuff to lists
             elbo_losses.append(elbo_loss_value)
             joint_losses.append(joint_loss_value)
@@ -460,14 +472,15 @@ class Training:
             gesture_embed_preds.append(pass_result["gesture_embed"])
 
             current_time = perf_counter()
-            rate = len(info["user"]) / (current_time - start_time)
-            self.ui.update_data(
-                {"valid_loss": joint_loss_value,
-                 "loss_diff": embed_loss_value - null_loss_value,
-                 "epoch": epoch,
-                 "batch": batch_idx,
-                 "rate": rate}
-            )
+
+            data_dict = {"valid_loss": joint_loss_value,
+                         "loss_diff": 0.,
+                         "epoch": epoch,
+                         "batch": batch_idx}
+            if embed_loss_value is not None:
+                data_dict["embed_loss"] = embed_loss_value - null_loss_value
+            self.ui.update_data(data_dict)
+
             bvp_null = pass_result["bvp_null"]
             bvp_embed = pass_result["bvp_embed"]
             self.ui.step(len(info["user"]))
@@ -475,13 +488,17 @@ class Training:
         gesture_gts = torch.cat(gesture_gts)
         gesture_null_preds = torch.cat(gesture_null_preds)
         gesture_null_preds = torch.argmax(gesture_null_preds, dim=1)
-        gesture_embed_preds = torch.cat(gesture_embed_preds)
-        gesture_embed_preds = torch.argmax(gesture_embed_preds, dim=1)
 
         # Move all to cpu
         gesture_gts = gesture_gts.to(torch.device("cpu"))
         gesture_null_preds = gesture_null_preds.to(torch.device("cpu"))
-        gesture_embed_preds = gesture_embed_preds.to(torch.device("cpu"))
+
+        if gesture_embed_preds[0] is not None:
+            gesture_embed_preds = torch.cat(gesture_embed_preds)
+            gesture_embed_preds = torch.argmax(gesture_embed_preds, dim=1)
+            gesture_embed_preds = gesture_embed_preds.to(torch.device("cpu"))
+        else:
+            gesture_embed_preds = None
 
         # Calculate metrics over entire validation set
         joint_losses = np.mean(np.array(joint_losses)).item()
@@ -489,18 +506,25 @@ class Training:
             "valid_elbo_loss": np.mean(np.array(elbo_losses)),
             "valid_joint_loss": joint_losses,
             "valid_bvp_null_loss": np.mean(np.array(bvp_null_losses)),
-            "valid_bvp_embed_loss": np.mean(np.array(bvp_embed_losses)),
+            "valid_bvp_embed_loss": float("nan"),
             "valid_null_acc": self.acc(gesture_gts, gesture_null_preds),
             "valid_null_prec": self.prec(gesture_gts, gesture_null_preds),
             "valid_null_f1": self.f1(gesture_gts, gesture_null_preds),
             "valid_null_conf_mat": self._conf_matrix(gesture_gts,
                                                      gesture_null_preds),
-            "valid_embed_acc": self.acc(gesture_gts, gesture_embed_preds),
-            "valid_embed_prec": self.prec(gesture_gts, gesture_embed_preds),
-            "valid_embed_f1": self.f1(gesture_gts, gesture_embed_preds),
-            "valid_embed_conf_mat": self._conf_matrix(gesture_gts,
-                                                      gesture_embed_preds)
+            "valid_embed_acc": float("nan"),
+            "valid_embed_prec": float("nan"),
+            "valid_embed_f1": float("nan"),
         }
+        if gesture_embed_preds is not None:
+            log_dict.update({
+                "valid_bvp_embed_loss": np.mean(np.array(bvp_embed_losses)),
+                "valid_embed_acc": self.acc(gesture_gts, gesture_embed_preds),
+                "valid_embed_prec": self.prec(gesture_gts, gesture_embed_preds),
+                "valid_embed_f1": self.f1(gesture_gts, gesture_embed_preds),
+                "valid_embed_conf_mat": self._conf_matrix(gesture_gts,
+                                                          gesture_embed_preds)
+            })
 
         log_dict.update(**self._visualize_and_set_images(bvp,
                                                          bvp_null,
@@ -524,7 +548,7 @@ class Training:
     def _visualize_and_set_images(self,
                                   bvp: torch.Tensor,
                                   bvp_null: torch.Tensor,
-                                  bvp_embed: torch.Tensor,
+                                  bvp_embed: torch.Tensor | None,
                                   log_prefix: str) -> dict[str, any]:
         """Visualize BVPs and puts it in the log_dict and on WandB.
 
@@ -539,15 +563,18 @@ class Training:
         original_imgs = tensor_to_image(bvp, (0, 3), self.color_palette)
         null_reconstr_imgs = tensor_to_image(bvp_null, (0, 3),
                                              self.color_palette)
-        embed_reconstr_imgs = tensor_to_image(bvp_embed, (0, 3),
-                                              self.color_palette)
+        if bvp_embed is not None:
+            embed_reconstr_imgs = tensor_to_image(bvp_embed, (0, 3),
+                                                  self.color_palette)
+            img_dict[f"{log_prefix}_bvp_embed"] = [wandb.Image(i)
+                                                   for i in embed_reconstr_imgs]
+        else:
+            embed_reconstr_imgs = [None]
 
         img_dict[f"{log_prefix}_bvp"] = [wandb.Image(i)
                                          for i in original_imgs]
         img_dict[f"{log_prefix}_bvp_null"] = [wandb.Image(i)
                                               for i in null_reconstr_imgs]
-        img_dict[f"{log_prefix}_bvp_embed"] = [wandb.Image(i)
-                                               for i in embed_reconstr_imgs]
 
         self.ui.update_image(original_imgs[0],
                              null_reconstr_imgs[0],
@@ -559,10 +586,6 @@ class Training:
         """Generates a conf-matrix plot"""
         fig, ax = plt.subplots()
         ax.matshow(self.conf_mat(gesture_gt, gesture_pred))
-        # Put VAE to eval mode
-        self.encoder.eval()
-        self.null_head.eval()
-        self.embed_head.eval()
 
         return fig
 
@@ -574,20 +597,16 @@ class Training:
             if self.prev_checkpoint_fp is not None:
                 if self.prev_checkpoint_fp.exists():
                     self.prev_checkpoint_fp.unlink()
+            save_dict = {
+                "encoder_state_dict": self.encoder.state_dict(),
+                "null_mt_head_state_dict": self.null_head.state_dict(),
+                "embed_agent_state_dict": self.embedding_agent.state_dict()
+            }
+            if self.embed_head is not None:
+                save_dict["embed_mt_head_state_dict"] = \
+                    self.embed_head.state_dict()
 
-            torch.save(
-                {
-                    "encoder_state_dict":
-                        self.encoder.state_dict(),
-                    "null_mt_head_state_dict":
-                        self.null_head.state_dict(),
-                    "embed_mt_head_state_dict":
-                        self.embed_head.state_dict(),
-                    "embed_agent_state_dict":
-                        self.embedding_agent.state_dict()
-                },
-                checkpoint_fp
-            )
+            torch.save(save_dict, checkpoint_fp)
             self.best_joint_loss = curr_joint_loss
             self.prev_checkpoint_fp = checkpoint_fp
 
@@ -614,14 +633,25 @@ class Training:
         # Ensure that the models are on the right devices
         self.encoder.to(device)
         self.null_head.to(device)
-        self.embed_head.to(device)
         self.embedding_agent.to(device)
 
         for epoch in range(epochs):
+            # Check if we should start training the agent yet
+            if epoch == self.agent_start_epoch:
+                # Duplicate the null head to create the embedding head
+                self.ui.update_status("Training embedding agent starting "
+                                      "this epoch...")
+                self.embed_head = copy.deepcopy(self.null_head)
+                self.embed_head.to(device)
+                self.embed_head_optimizer = copy.deepcopy(
+                    self.null_head_optimizer
+                )
+
             # Train the VAE portion of the model
             self.encoder.train()
             self.null_head.train()
-            self.embed_head.train()
+            if self.embed_head is not None:
+                self.embed_head.train()
             self.embedding_agent.eval()
 
             if not self._train_vae(train_loader, device, epoch):
@@ -630,10 +660,11 @@ class Training:
             # Put VAE to eval mode
             self.encoder.eval()
             self.null_head.eval()
-            self.embed_head.eval()
+            if self.embed_head is not None:
+                self.embed_head.eval()
 
             # Train the embedding agent if desired
-            if train_embedding_agent:
+            if train_embedding_agent and epoch >= self.agent_start_epoch:
                 self.embedding_agent.train()
 
                 self._train_agent(train_loader, device, epoch, agent_epochs,
