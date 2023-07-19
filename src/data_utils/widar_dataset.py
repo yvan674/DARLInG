@@ -108,7 +108,8 @@ class WidarDataset(Dataset):
         self.phase_pipeline = phase_pipeline
 
         if dataset_type not in ("small", "single_domain", "single_user",
-                                "full"):
+                                "full", "single_domain_small",
+                                "single_user_small"):
             raise ValueError(f"Dataset type {dataset_type} is not one of the"
                              f"possible options [`small`, `single_domain`, "
                              f"`full`].")
@@ -170,7 +171,8 @@ class WidarDataset(Dataset):
                 # Reshape to (time, 20, 20)
                 bvp = np.moveaxis(bvp, -1, 0)
                 out = np.zeros((28, 20, 20), dtype=np.float32)
-                out[:bvp.shape[0], :, :] = bvp
+                time_dim = min(28, bvp.shape[0])
+                out[:time_dim, :, :] = bvp[:time_dim]
             case "1d":
                 # Move time axis forward
                 bvp = np.moveaxis(bvp, -1, 0)

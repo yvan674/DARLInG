@@ -19,11 +19,7 @@ def parse_args():
                    help="Type of split to process. Options are `small` or "
                         "`single_domain`")
 
-    # Verify that SPLIT_TYPE is one of the possible options
     args = p.parse_args()
-    if args.SPLIT_TYPE not in ("small", "single_domain", "single_user"):
-        raise ValueError(f"SPLIT_TYPE must be one of `small`, `sulo`, "
-                         f"`single_domain`. Got {args.SPLIT_TYPE} instead.")
 
     return args
 
