@@ -16,7 +16,7 @@ class Decoder(nn.Module):
                  dropout: float = 0.3,
                  latent_dim: int = 10,
                  output_layers: int = 1,
-                 output_size: int = 20):
+                 output_size: tuple[int, int] | int = 20):
         """Decoder from a VAE.
         """
         super(Decoder, self).__init__()
@@ -93,19 +93,22 @@ class MultiTaskHead(nn.Module):
     def __init__(self,
                  decoder_ac_func: nn.Module,
                  decoder_dropout: float,
+                 decoder_output_layers: int,
+                 decoder_output_size: tuple[int, int] | int,
                  encoder_latent_dim: int,
                  predictor_num_layers: int,
                  predictor_ac_func: nn.Module,
                  predictor_dropout: float,
                  domain_label_size: int,
-                 bvp_output_layers: int,
-                 bvp_output_size: int = 20,
                  num_classes: int = 6):
         """Multi Task Prediction Head.
 
         Args:
             decoder_ac_func: Activation function for the decoder.
             decoder_dropout: Dropout rate for the decoder.
+            decoder_output_layers: How many channels the BVP input actually has
+                which we should reconstruct for.
+            decoder_output_size: The size of the BVP output to reconstruct.
             encoder_latent_dim: Latent dimensionality of the output of the
                 encoder.
             predictor_num_layers: Number of linear layers to use in the
@@ -113,9 +116,6 @@ class MultiTaskHead(nn.Module):
             predictor_ac_func: Activation function for the predictor.
             predictor_dropout: Dropout rate for the predictor.
             domain_label_size: Dimensionality of the domain label.
-            bvp_output_layers: How many channels the BVP input actually has
-                which we should reconstruct for.
-            bvp_output_size: The size of the BVP output to reconstruct.
             num_classes: Number of classes to predict.
         """
         super().__init__()
@@ -125,8 +125,8 @@ class MultiTaskHead(nn.Module):
         self.decoder = Decoder(decoder_ac_func,
                                decoder_dropout,
                                in_features,
-                               bvp_output_layers,
-                               bvp_output_size)
+                               decoder_output_layers,
+                               decoder_output_size)
         self.predictor = GesturePredictor(predictor_ac_func,
                                           predictor_dropout,
                                           num_classes=num_classes,

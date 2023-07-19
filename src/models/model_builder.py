@@ -42,7 +42,10 @@ def calc_encoder_fc_size(input_img: torch.Tensor,
     temp_encoder.eval()
     with torch.no_grad():
         h = temp_encoder.convnet(input_img.unsqueeze(0))
+        h = h.flatten(1)
         fc_input_size = h.shape[1]
+
+    del temp_encoder
 
     return fc_input_size
 
@@ -120,23 +123,29 @@ def build_model(config: dict[str, any],
         mt_input_head_dim = 2 * config["encoder"]["latent_dim"]
 
     # SECTION Multitask heads
-    null_head = MultiTaskHead(mt_dec_ac_fn,
-                              config["mt"]["decoder_dropout"],
-                              mt_input_head_dim,
-                              config["mt"]["predictor_num_layers"],
-                              mt_pred_ac_fn,
-                              config["mt"]["predictor_dropout"],
-                              domain_embedding_size,
-                              encoder_input_dim)
+    null_head = MultiTaskHead(
+        decoder_ac_func=mt_dec_ac_fn,
+        decoder_dropout=config["mt"]["decoder_dropout"],
+        decoder_output_layers=encoder_input_dim,
+        decoder_output_size=input_img.shape[1:],
+        encoder_latent_dim=mt_input_head_dim,
+        predictor_num_layers=config["mt"]["predictor_num_layers"],
+        predictor_ac_func=mt_pred_ac_fn,
+        predictor_dropout=config["mt"]["predictor_dropout"],
+        domain_label_size=domain_embedding_size
+    )
 
-    embed_head = MultiTaskHead(mt_dec_ac_fn,
-                               config["mt"]["decoder_dropout"],
-                               mt_input_head_dim,
-                               config["mt"]["predictor_num_layers"],
-                               mt_pred_ac_fn,
-                               config["mt"]["predictor_dropout"],
-                               domain_embedding_size,
-                               encoder_input_dim)
+    embed_head = MultiTaskHead(
+        decoder_ac_func=mt_dec_ac_fn,
+        decoder_dropout=config["mt"]["decoder_dropout"],
+        decoder_output_layers=encoder_input_dim,
+        decoder_output_size=input_img.shape[1:],
+        encoder_latent_dim=mt_input_head_dim,
+        predictor_num_layers=config["mt"]["predictor_num_layers"],
+        predictor_ac_func=mt_pred_ac_fn,
+        predictor_dropout=config["mt"]["predictor_dropout"],
+        domain_label_size=domain_embedding_size
+    )
 
     # SECTION Embed Agents
     if config["embed"]["value_type"] in ("known", "one-hot"):

@@ -170,15 +170,11 @@ def main(data_root: Path, debug_mode: bool):
 
     # SECTION: Model initialization
     encoder = BVPEncoder(fc_input_size=8192, dropout=0.4)
-    head = MultiTaskHead(decoder_ac_func=nn.ReLU,
-                         decoder_dropout=0.4,
-                         encoder_latent_dim=10,
-                         predictor_ac_func=nn.ReLU,
-                         predictor_dropout=0.4,
-                         domain_label_size=0,
-                         bvp_output_layers=1,
-                         bvp_output_size=28,
-                         num_classes=10)
+    head = MultiTaskHead(decoder_ac_func=nn.ReLU, decoder_dropout=0.4,
+                         decoder_output_layers=1, decoder_output_size=28,
+                         encoder_latent_dim=10, predictor_num_layers=5,
+                         predictor_ac_func=nn.ReLU, predictor_dropout=0.4,
+                         domain_label_size=0, num_classes=10)
 
     encoder.to(device)
     head.to(device)
