@@ -1,0 +1,47 @@
+# Initial attempts to train the model with the known domain agent and BVP as
+# input.
+
+train:
+  batch_size: 16
+  epochs: 300
+  ui: tqdm
+  checkpoint_dir: "../../checkpoints/"
+
+data:
+  data_dir: "../../data"
+  dataset_type: "single_user_small"
+  downsample_multiplier: 2
+  transformation: null
+  bvp_agg: "stack"
+  amp_pipeline: null
+  phase_pipeline: null
+  bvp_pipeline: true
+
+encoder:
+  dropout: 0.15
+  latent_dim: 80
+  activation_fn: "relu"
+  initial_kernel_size: 8
+  num_conv_layers: 5
+
+mt:
+  decoder_dropout: 0.5
+  decoder_activation_fn: "selu"
+  predictor_dropout: 0.3
+  predictor_activation_fn: "leaky"
+  predictor_num_layers: 4
+
+embed:
+  value_type: "known"
+  embed_size: null
+
+optim_loss:
+  optimizer: "adam"
+  lr: 0.0001
+  alpha: 0.005
+  beta: 0.5
+
+debug:
+  is_debug: false
+  on_cpu: false
+  offline: false
