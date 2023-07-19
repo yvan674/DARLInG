@@ -2,6 +2,7 @@
 
 Training function for DARLInG.
 """
+import math
 from pathlib import Path
 
 import numpy as np
@@ -178,8 +179,13 @@ class Training:
         return out_dict
 
     def _train_vae(self, train_loader: DataLoader, device: torch.device,
-                   epoch: int):
-        """Trains just the VAE component of the model."""
+                   epoch: int) -> bool:
+        """Trains just the VAE component of the model.
+
+        Returns:
+            True if the model training was successful, False if loss goes to
+            nan.
+        """
         self.ui.update_status("Training VAE model...")
         for batch_idx, (amp, phase, bvp, info) in enumerate(train_loader):
             self.step += 1
@@ -206,6 +212,12 @@ class Training:
                                 + null_loss_value
                                 + embed_loss_value)
             loss_diff = embed_loss_value - null_loss_value
+
+            # Check if any loss values are nan
+            should_exit = torch.isnan(elbo_loss_value) \
+                or torch.isnan(null_loss_value) \
+                or torch.isnan(embed_loss_value) \
+                or torch.isnan(joint_loss_value)
 
             loss_vals = {
                 "train_loss": joint_loss_value,
@@ -243,6 +255,10 @@ class Training:
             self.ui.update_data(ui_data)
             self.logging.log(log_dict, self.step)
             self.ui.step(len(info["user"]))
+
+            if should_exit:
+                self.ui.update_status("Joint loss is nan, exiting...")
+                return False
 
     def _train_agent(self, train_loader: DataLoader, device: torch.device,
                      epoch: int, agent_epochs: int, total_epochs: int):
@@ -581,7 +597,7 @@ class Training:
               valid_loader: DataLoader,
               epochs: int,
               agent_epochs: int,
-              device: torch.device):
+              device: torch.device) -> bool:
         """Trains the model which was given in the initialization of the class.
 
         Args:
@@ -591,6 +607,9 @@ class Training:
             epochs: Number of epochs to train for.
             agent_epochs: Number of epochs to train the embedding agent for.
             device: Which device to train on.
+
+        Returns:
+            True if training was successful or False if training loss was NaN.
         """
         # Ensure that the models are on the right devices
         self.encoder.to(device)
@@ -605,7 +624,8 @@ class Training:
             self.embed_head.train()
             self.embedding_agent.eval()
 
-            self._train_vae(train_loader, device, epoch)
+            if not self._train_vae(train_loader, device, epoch):
+                return False
 
             # Put VAE to eval mode
             self.encoder.eval()
@@ -625,6 +645,10 @@ class Training:
             curr_joint_loss = self._validate_holistic(
                 valid_loader, device, epoch
             )
+            if math.isnan(curr_joint_loss):
+                self.ui.update_status("Validation loss is NaN.")
+                return False
 
             # Save checkpoint
             self._save_checkpoint(curr_joint_loss, epoch)
+        return True
