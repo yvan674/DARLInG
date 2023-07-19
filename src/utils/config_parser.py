@@ -12,7 +12,7 @@ from signal_processing.pipeline import Pipeline
 from signal_processing.standard_scaler import StandardScaler
 
 
-def train_config(batch_size: int = 64,
+def train_config(batch_size: int = 32,
                  epochs: int = 15,
                  ui: str = "tqdm",
                  checkpoint_dir: str | Path = Path("../../checkpoints/")
@@ -160,9 +160,9 @@ def encoder_config(dropout: float = 0.3,
 
 
 def mt_config(decoder_dropout: float = 0.3,
-              decoder_activation_fn: str = "relu",
+              decoder_activation_fn: str = "selu",
               predictor_dropout: float = 0.3,
-              predictor_activation_fn: str = "relu",
+              predictor_activation_fn: str = "selu",
               predictor_num_layers: int = 3) -> dict[str, any]:
     """Multitask configuration for training.
 

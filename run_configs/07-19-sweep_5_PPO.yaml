@@ -1,0 +1,106 @@
+program: utils/sweep_runner.py
+method: bayes
+metric:
+  goal: maximize
+  name: valid_embed_f1
+parameters:
+  optim_loss.alpha:
+    max: -4
+    min: -10
+    distribution: log_uniform
+  optim_loss.lr:
+    max: -5
+    min: -9
+    distribution: log_uniform
+  encoder.activation_fn:
+    values:
+      - relu
+      - leaky
+    distribution: categorical
+  encoder.latent_dim:
+    max: 100
+    min: 10
+    distribution: int_uniform
+  encoder.dropout:
+    max: 0.5
+    min: 0.15
+    distribution: uniform
+  encoder.num_conv_layers:
+    min: 3
+    max: 6
+    distribution: int_uniform
+  encoder.initial_kernel_size:
+    min: 5
+    max: 9
+    distribution: int_uniform
+  embed.value_type:
+    values:
+      - known
+    distribution: categorical
+  data.downsample_multiplier:
+    value: 2
+    distribution: constant
+  data.dataset_type:
+    value: "single_user_small"
+    distribution: constant
+  data.bvp_agg:
+    value: sum
+    distribution: constant
+  data.bvp_pipeline:
+    value: "true"
+    distribution: constant
+  mt.decoder_activation_fn:
+    values:
+      - relu
+      - leaky
+      - selu
+    distribution: categorical
+  mt.predictor_dropout:
+    max: 0.6
+    min: 0.15
+    distribution: uniform
+  mt.decoder_dropout:
+    max: 0.5
+    min: 0.15
+    distribution: uniform
+  mt.predictor_num_layers:
+    min: 3
+    max: 8
+    distribution: int_uniform
+  embed.start_epoch:
+    min: 0
+    max: 50
+    q: 5
+    distribution: q_uniform
+  embed.epochs:
+    min: 1
+    max: 5
+    distribution: int_uniform
+  embed.critic_num_layers:
+    min: 3
+    max: 6
+    distribution: int_uniform
+  embed.critic_dropout:
+    min: 0.15
+    max: 0.6
+    distribution: uniform
+  embed.actor_num_layers:
+    min: 3
+    max: 6
+    distribution: int_uniform
+  embed.actor_dropout:
+    min: 0.15
+    max: 0.6
+    distribution: uniform
+  embed.lr:
+    max: -5
+    min: -9
+    distribution: log_uniform
+  embed.gamma:
+    min: -0.1
+    max: -0.0001
+    distribution: log_uniform
+  embed.gae_lambda:
+    min: 0.8
+    max: 0.99
+    distribution: uniform
