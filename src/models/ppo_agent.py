@@ -16,6 +16,10 @@ class PPOAgent(BaseEmbeddingAgent):
     def __init__(self,
                  input_size: int,
                  domain_embedding_size: int,
+                 critic_num_layers: int,
+                 critic_dropout: float,
+                 actor_num_layers: int,
+                 actor_dropout: float,
                  lr: float = 3e-4,
                  anneal_lr: bool = True,
                  gamma: float = 0.99,
@@ -33,6 +37,10 @@ class PPOAgent(BaseEmbeddingAgent):
         Args:
             input_size: Size of the environmental observation.
             domain_embedding_size: Size of the action tensor.
+            critic_num_layers: Number of layers in the critic network.
+            critic_dropout: Dropout for the critic network.
+            actor_num_layers: Number of layers in the actor network.
+            actor_dropout: Dropout for the actor network.
             lr: Learning rate for the agent optimizer.
             anneal_lr: Whether to use learning rate annealing.
             gamma: Discount factor gamma in the PPO algorithm.
@@ -61,7 +69,10 @@ class PPOAgent(BaseEmbeddingAgent):
 
         self.input_size = input_size
 
-        self.ppo = PPO(input_size, domain_embedding_size)
+        self.ppo = PPO(input_size, domain_embedding_size,
+                       critic_num_layers, critic_dropout,
+                       actor_num_layers, actor_dropout)
+
         self.optimizer = torch.optim.Adam(self.ppo.parameters(), lr=lr,
                                           eps=1e-5)
 
