@@ -24,7 +24,7 @@ if __name__ == '__main__':
 
     # Set up constant configs explicitly, in case defaults change
     config = {"train": {"checkpoint_dir": "../checkpoints",
-                        "epochs": 150,
+                        "epochs": 75,
                         "ui": "tqdm"},
               "data": {"data_dir": data_dir},
               "encoder": {},
