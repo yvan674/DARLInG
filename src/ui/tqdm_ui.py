@@ -17,7 +17,7 @@ class TqdmUI(BaseUI):
         self.current_epoch = 1
         self.total_epochs = epochs
         self.prog_bar = tqdm(desc=f"Epoch: 1 of {epochs} | "
-                                  f"Training loss: nan", total=total_steps)
+                                  f"Training loss: -.--", total=total_steps)
 
     def update_data(self, data: dict[str, any]):
         if "epoch" in data:
@@ -32,6 +32,9 @@ class TqdmUI(BaseUI):
                                           f"{self.total_epochs} | "
                                           f"Validation loss: "
                                           f"{data['valid_loss']:.2f}")
+        for key in data.keys():
+            if isinstance(data[key], float):
+                data[key] = round(data[key], 3)
         self.prog_bar.write(f"{data}")
 
     def update_image(self, ori_img: Image, null_img: Image, embed_image: Image):
