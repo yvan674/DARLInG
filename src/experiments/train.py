@@ -417,8 +417,8 @@ class Training:
 
                 self.embedding_agent.optimizer.zero_grad()
                 loss.backward()
-                nn.utils.clip_grad_norm(self.embedding_agent.ppo.parameters(),
-                                        self.embedding_agent.max_grad_norm)
+                nn.utils.clip_grad_norm_(self.embedding_agent.ppo.parameters(),
+                                         self.embedding_agent.max_grad_norm)
                 self.embedding_agent.optimizer.step()
                 # TODO Actual logging of losses etc.
             steps_completed += train_loader.batch_size
