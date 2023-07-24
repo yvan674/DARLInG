@@ -1,0 +1,51 @@
+# Initial attempts to train the model with the known domain agent and csi as
+# input.
+
+train:
+  batch_size: 32
+  epochs: 500
+  ui: tqdm
+  checkpoint_dir: "../../checkpoints/"
+
+data:
+  data_dir: "F:\\Offline Docs\\Master Thesis\\data"
+  dataset_type: "single_user_small"
+  downsample_multiplier: 2
+  transformation: null
+  bvp_agg: "sum"
+  bvp_pipeline: true
+  amp_pipeline: null
+  phase_pipeline: null
+
+encoder:
+  dropout: 0.2
+  latent_dim: 80
+  activation_fn: "relu"
+  initial_kernel_size: 9
+  num_conv_layers: 3
+
+mt:
+  decoder_dropout: 0.45
+  decoder_activation_fn: "selu"
+  predictor_dropout: 0.2
+  predictor_num_layers: 4
+  predictor_activation_fn: "relu"
+
+embed:
+  value_type: "probability-measure"
+  embed_size: 40
+  epochs: 5
+  start_epoch: 45
+  actor_dropout: 0.45
+  actor_num_layers: 5
+  critic_dropout: 0.5
+  critic_num_layers: 6
+  gae_lambda: 0.85
+  gamma: 0.995
+  lr: 0.00015
+
+optim_loss:
+  optimizer: "adam"
+  lr: 0.0002
+  alpha: 0.00007
+  beta: 0.5
