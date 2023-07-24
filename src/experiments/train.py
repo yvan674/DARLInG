@@ -316,8 +316,9 @@ class Training:
                          - pass_result["null_loss"])
             rewards[batch_slice] = loss_diff
             values[batch_slice] = pass_result["agent_critic_value"].flatten()
+            loss_diff = loss_diff.mean().item()
 
-            log_dict = {"train_loss_diff": loss_diff.mean().item()}
+            log_dict = {"train_loss_diff": loss_diff}
             current_time = perf_counter()
             self.logging.log(log_dict, self.step)
             self.ui.update_data({
