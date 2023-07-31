@@ -34,15 +34,15 @@ mt:
 embed:
   value_type: "probability-measure"
   embed_size: 40
-  epochs: 5
-  start_epoch: 45
-  actor_dropout: 0.45
-  actor_num_layers: 5
-  critic_dropout: 0.5
+  epochs: 4
+  start_epoch: 10
+  actor_dropout: 0.3
+  actor_num_layers: 3
+  critic_dropout: 0.4
   critic_num_layers: 6
-  gae_lambda: 0.85
-  gamma: 0.995
-  lr: 0.00015
+  gae_lambda: 0.87
+  gamma: 0.976
+  lr: 0.0032
 
 optim_loss:
   optimizer: "adam"
