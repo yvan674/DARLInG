@@ -84,15 +84,14 @@ SINGLE_DOMAIN_SELECTION = {
 
 # Single user leave-out validation
 TRAINING_SULO = {
-    "user": {"1", "4", "5", "10", "11", "12", "13", "14", "15", "16",
-             "17"},
+    "user": {"3", "5", "6", "10", "11", "12"},
     "room_num": {1},
     "torso_location": {"1", "2", "3", "4", "5"},
     "gesture": {"1", "2", "3", "4", "5", "6"}
 }
 
 VALIDATION_SULO = {
-    "user": {"2"},
+    "user": {"1"},
     "room_num": {1},
     "torso_location": {"1", "2", "3", "4", "5"},
     "gesture": {"1", "2", "3", "4", "5", "6"}
