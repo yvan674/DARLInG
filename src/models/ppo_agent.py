@@ -55,6 +55,10 @@ class PPOAgent(BaseEmbeddingAgent):
             target_kl: Target KL divergence threshold.
         """
         super().__init__(domain_embedding_size=domain_embedding_size)
+        self.critic_num_layers = critic_num_layers
+        self.critic_dropout = critic_dropout
+        self.actor_num_layers = actor_num_layers
+        self.actor_dropout = actor_dropout
         self.lr = lr
         self.anneal_lr = anneal_lr
         self.gamma = gamma
@@ -102,26 +106,36 @@ class PPOAgent(BaseEmbeddingAgent):
         self.ppo.eval()
 
     def state_dict(self):
-        return {"lr": self.lr,
-                "anneal_lr": self.anneal_lr,
-                "gamma": self.gamma,
-                "gae_lambda": self.gae_lambda,
-                "norm_advantage": self.norm_advantage,
-                "clip_coef": self.clip_coef,
-                "clip_value_loss": self.clip_value_loss,
-                "entropy_coef": self.entropy_coef,
-                "value_func_coef": self.value_func_coef,
-                "max_grad_norm": self.max_grad_norm,
-                "target_kl": self.target_kl,
-                "input_size": self.input_size,
-                "ppo": self.ppo.state_dict(),
-                "domain_embedding_size": self.domain_embedding_size,
-                "optimizer": self.optimizer.state_dict()}
+        return {
+            "critic_num_layers": self.critic_num_layers,
+            "critic_dropout": self.critic_dropout,
+            "actor_num_layers": self.actor_num_layers,
+            "actor_dropout": self.actor_dropout,
+            "lr": self.lr,
+            "anneal_lr": self.anneal_lr,
+            "gamma": self.gamma,
+            "gae_lambda": self.gae_lambda,
+            "norm_advantage": self.norm_advantage,
+            "clip_coef": self.clip_coef,
+            "clip_value_loss": self.clip_value_loss,
+            "entropy_coef": self.entropy_coef,
+            "value_func_coef": self.value_func_coef,
+            "max_grad_norm": self.max_grad_norm,
+            "target_kl": self.target_kl,
+            "input_size": self.input_size,
+            "ppo": self.ppo.state_dict(),
+            "domain_embedding_size": self.domain_embedding_size,
+            "optimizer": self.optimizer.state_dict()
+        }
 
     @staticmethod
     def load_state_dict(sd: dict[any]):
         agent = PPOAgent(sd["input_size"],
                          sd["domain_embedding_size"],
+                         critic_num_layers=sd["critic_num_layers"],
+                         critic_dropout=sd["critic_dropout"],
+                         actor_num_layers=sd["actor_num_layers"],
+                         actor_dropout=sd["actor_dropout"],
                          lr=sd["lr"],
                          anneal_lr=sd["anneal_lr"],
                          gamma=sd["gamma"],
