@@ -113,4 +113,4 @@ def calculate_total_dirs(csi_dir: Path) -> int:
 __all__ = ["WidarDataset", "calculate_total_dirs", "ROOM_DATE_MAPPING",
            "DATE_ROOM_MAPPING", "TRAINING_SELECTION", "VALIDATION_SELECTION",
            "TEST_LOCATION_SELECTION", "TEST_ROOM_SELECTION",
-           "SINGLE_DOMAIN_SELECTION"]
+           "SINGLE_DOMAIN_SELECTION", "TRAINING_SULO", "VALIDATION_SULO"]
