@@ -41,6 +41,25 @@ def forward_pass(encoder, embed_agent, amp, phase, bvp, bvp_pipeline, device):
     return z, action
 
 
+def visualize_space(space, colors, legend_ncols, space_name, plot_title,
+                    legend_title):
+    fig, ax = plt.subplots()
+    scatter = ax.scatter(space[:, 0], space[:, 1],
+                         c=colors)
+
+    # Shrink axis so it doesn't overlap
+    box = ax.get_position()
+    ax.set_position([box.x0, box.y0 + box.height * 0.15,
+                     box.width, box.height * 0.85])
+
+    # Put legend below the axis
+    ax.legend(*scatter.legend_elements(),
+              loc='upper center', bbox_to_anchor=(0.5, -0.85),
+              ncol=legend_ncols, title=legend_title)
+    plt.title(f"{space_name} ({plot_title})")
+    plt.savefig(f"{space_name}_{plot_title}.png")
+
+
 def main(checkpoint_fp: Path, config_fp: Path, data_dir_fp: Path):
     config = parse_config_file(config_fp)
     device = torch.device("cpu")
@@ -96,6 +115,7 @@ def main(checkpoint_fp: Path, config_fp: Path, data_dir_fp: Path):
     latent_space = []
     embed_space = []
     infos = []
+    users = set()
     for i, (amp, phase, bvp, info) in tqdm(enumerate(train_dataset),
                                            total=len(train_dataset)):
         z, action = forward_pass(encoder, embed_agent, amp, phase, bvp,
@@ -104,6 +124,7 @@ def main(checkpoint_fp: Path, config_fp: Path, data_dir_fp: Path):
         embed_space.append(action)
         info["is_train"] = True
         infos.append(info)
+        users.add(info["user"])
 
     for i, (amp, phase, bvp, info) in tqdm(enumerate(valid_dataset),
                                            total=len(valid_dataset)):
@@ -113,12 +134,10 @@ def main(checkpoint_fp: Path, config_fp: Path, data_dir_fp: Path):
         embed_space.append(action)
         info["is_train"] = False
         infos.append(info)
+        users.add(info["user"])
 
     latent_space = torch.cat(latent_space, dim=0)
     embed_space = torch.cat(embed_space, dim=0)
-
-    # Get all unique users from infos
-    users = set([info["user"] for info in infos])
 
 
     # SECTION Visualize spaces
@@ -128,34 +147,17 @@ def main(checkpoint_fp: Path, config_fp: Path, data_dir_fp: Path):
         space = tsne.fit_transform(space)
 
         # Color based on train/valid, showing legend
-        fig, ax = plt.subplots()
-        scatter = ax.scatter(space[:, 0], space[:, 1], c=[info["is_train"]
-                                                          for info in infos])
-        legend1 = ax.legend(*scatter.legend_elements(),
-                            loc="lower left", title="Is Train")
-        ax.add_artist(legend1)
-        plt.title(f"{space_name} (train/valid)")
-        plt.savefig(f"{space_name}_train_valid.png")
+        visualize_space(space, [info["is_train"] for info in infos],
+                        2, space_name, "train-valid",
+                        "Is Train")
 
-        # Color based on gesture
-        fig, ax = plt.subplots()
-        scatter = ax.scatter(space[:, 0], space[:, 1],
-                             c=[info["gesture"] for info in infos])
-        legend1 = ax.legend(*scatter.legend_elements(),
-                            loc="lower left", title="Gesture")
-        ax.add_artist(legend1)
-        plt.title(f"{space_name} (gesture)")
-        plt.savefig(f"{space_name}_gesture.png")
+        visualize_space(space, [info["gesture"] for info in infos],
+                        6, space_name, "gesture",
+                        "Gesture")
 
-        # Color based on user
-        fig, ax = plt.subplots()
-        scatter = ax.scatter(space[:, 0], space[:, 1],
-                             c=[info["user"] for info in infos])
-        legend1 = ax.legend(*scatter.legend_elements(),
-                            loc="lower left", title="User")
-        ax.add_artist(legend1)
-        plt.title(f"{space_name} (user)")
-        plt.savefig(f"{space_name}_user.png")
+        visualize_space(space, [info["user"] for info in infos],
+                        6, space_name, "user",
+                        "User")
 
 
 if __name__ == '__main__':
