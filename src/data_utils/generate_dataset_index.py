@@ -47,7 +47,9 @@ import random
 import pickle
 
 from sklearn.model_selection import train_test_split
+from scipy.io import loadmat
 from tqdm import tqdm
+import numpy as np
 
 from data_utils import TRAINING_SELECTION, VALIDATION_SELECTION, \
     TEST_ROOM_SELECTION, TEST_LOCATION_SELECTION, \
@@ -77,9 +79,7 @@ def parse_args() -> Namespace:
 def find_bvp_of_csi(bvp_dir: Path, sample_record: dict,
                     suppress_warnings: bool = False) -> list[Path]:
     """Finds the corresponding BVP file of a CSI file."""
-    bvp_search_path = bvp_dir / f"{sample_record['date']}-VS"
-    if sample_record["date"] != "20181130":
-        bvp_search_path /= "6-link"
+    bvp_search_path = bvp_dir / f"{sample_record['date']}-VS" / "6-link"
 
     bvp_search_path /= f'user{sample_record["user"] + 1}'
     bvp_paths = []
@@ -88,11 +88,22 @@ def find_bvp_of_csi(bvp_dir: Path, sample_record: dict,
         if len(bvp_path) > 1:
             raise ValueError("Number of matching BVP files is "
                              "greater than one.")
+        valid_bvps = True
+        # Validate each BVP file
         if len(bvp_path) == 0:
             if not suppress_warnings:
                 warn(f"No matching BVP file found for {csi_stem}. Skipping...")
-            continue
-        bvp_paths.extend(bvp_path)
+            valid_bvps = False
+        for bvp_fp in bvp_path:
+            bvp = loadmat(str(bvp_fp))["velocity_spectrum_ro"]\
+                .astype(np.float32)
+            if len(bvp.shape) != 3:
+                if not suppress_warnings:
+                    warn(f"Broken BVP file found for {csi_stem}. "
+                         f"Skipping...")
+                valid_bvps = False
+        if valid_bvps:
+            bvp_paths.extend(bvp_path)
     return bvp_paths
 
 
@@ -104,35 +115,39 @@ def list_date_dirs(criteria: dict[str, any], csi_dir: Path) -> list[Path]:
     return date_dirs
 
 
-def create_glob_str(criteria: dict[str, any]) -> str:
+def create_glob_str(criteria: dict[str, any], user_id: str) -> str:
     """Creates the glob string for a search."""
-    user_str = "".join(criteria["user"])
     torso_str = "".join(criteria["torso_location"])
     gesture_str = "".join(criteria["gesture"])
     if "face_orientation" in criteria:
         face_str = "".join(criteria["face_orientation"])
-        glob_str = f"user[{user_str}]/user[{user_str}]-[{gesture_str}]" \
+        glob_str = f"user{user_id}/user{user_id}-[{gesture_str}]" \
                    f"-[{torso_str}]-[{face_str}]-?-*"
     else:
-        glob_str = f"user[{user_str}]/user[{user_str}]-[{gesture_str}]" \
+        glob_str = f"user{user_id}/user{user_id}-[{gesture_str}]" \
                    f"-[{torso_str}]-?-*"
 
     return glob_str
 
 
-def find_matching_in_date_dirs(dirs_to_search: list[Path],
-                               glob_str: str,
+def find_matching_in_date_dirs(date_dirs_to_search: list[Path],
+                               split: dict[str, any],
                                progress_desc: str) -> dict[str, any]:
     """Finds the corresponding files in a dir.
 
     Args:
-        dirs_to_search: Directories to search.
-        glob_str: Glob string to use.
+        date_dirs_to_search: Directories to search.
+        split: The split selection criteria to filter from
+            data_utils/__init__.py.
         progress_desc: Description to provide to tqdm
     """
     sample_records = {}
-    for dir_to_search in tqdm(dirs_to_search, desc=progress_desc):
-        matching_files = dir_to_search.glob(glob_str)
+    glob_strs = [create_glob_str(split, user_id)
+                 for user_id in split["user"]]
+    for date_dir in tqdm(date_dirs_to_search, desc=progress_desc):
+        matching_files = []
+        for glob_str in glob_strs:
+            matching_files += date_dir.glob(glob_str)
         for file in matching_files:
             file_data = file.stem[4:-3].split("-")[:-1]
             file_str = "".join(file_data)
@@ -152,8 +167,8 @@ def find_matching_in_date_dirs(dirs_to_search: list[Path],
                 # 0-indexed
                 sample_records[file_str] = {
                     "user": int(file_data[0]) - 1,
-                    "room_num": DATE_ROOM_MAPPING[dir_to_search.stem],
-                    "date": dir_to_search.stem,
+                    "room_num": DATE_ROOM_MAPPING[date_dir.stem],
+                    "date": date_dir.stem,
                     "torso_location": int(file_data[2]) - 1,
                     "face_orientation": int(file_data[3]) - 1,
                     "gesture": int(file_data[1]) - 1,
@@ -249,10 +264,8 @@ def parse_single_domain(widar_dir: Path):
 
     date_dirs = list_date_dirs(criteria, csi_dir)
 
-    glob_str = create_glob_str(criteria)
-
     sample_records = find_matching_in_date_dirs(
-        date_dirs, glob_str, "Reading dirs for single-domain"
+        date_dirs, criteria, "Reading dirs for single-domain"
     )
 
     output_data = process_samples(sample_records,
@@ -305,10 +318,8 @@ def parse_files(widar_dir: Path, num_repetitions: int | None,
         # Figure out which date directories to look into
         date_dirs = list_date_dirs(split, csi_dir)
 
-        glob_str = create_glob_str(split)
-
         sample_records = find_matching_in_date_dirs(
-            date_dirs, glob_str, f"Reading dirs for {split_name}"
+            date_dirs, split, f"Reading dirs for {split_name}"
         )
 
         output_data = process_samples(sample_records,
