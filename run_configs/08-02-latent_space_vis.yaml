@@ -1,0 +1,55 @@
+data:
+  amp_pipeline: null
+  bvp_agg: sum
+  bvp_pipeline: 1
+  data_dir: ../../data
+  dataset_type: single_user_small
+  downsample_multiplier: 2
+  phase_pipeline: null
+  transformation: null
+debug:
+  is_debug: false
+  offline: false
+  on_cpu: false
+embed:
+  actor_dropout: 0.4
+  actor_num_layers: 4
+  anneal_lr: true
+  clip_coef: 0.2
+  clip_value_loss: true
+  critic_dropout: 0.5
+  critic_num_layers: 4
+  embed_size: 33
+  entropy_coef: 0.0
+  epochs: 4
+  gae_lambda: 0.8630898726372189
+  gamma: 0.9573217957464132
+  lr: 0.0025678916361578877
+  max_grad_norm: 0.5
+  norm_advantage: true
+  start_epoch: 35
+  target_kl: null
+  value_func_coef: 0.5
+  value_type: probability-measure
+encoder:
+  activation_fn: leaky
+  dropout: 0.1758769924448918
+  initial_kernel_size: 7
+  latent_dim: 60
+  num_conv_layers: 3
+mt:
+  decoder_activation_fn: leaky
+  decoder_dropout: 0.25625995103954213
+  predictor_activation_fn: selu
+  predictor_dropout: 0.28004446618639806
+  predictor_num_layers: 4
+optim_loss:
+  alpha: 8.003575917644911e-05
+  beta: 0.5
+  lr: 0.0002207669098297281
+  optimizer: adam
+train:
+  batch_size: 16
+  checkpoint_dir: ../../checkpoints
+  epochs: 100
+  ui: tqdm

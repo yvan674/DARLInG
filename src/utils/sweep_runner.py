@@ -10,9 +10,9 @@ from utils.config_parser import train_config, data_config, encoder_config, \
     mt_config, embed_config, optim_loss_config, debug_config
 
 
-if __name__ == '__main__':
+def prepare_config(start_argument_idx: int = 1) -> dict[str, dict[str, any]]:
     # Read command line arguments
-    args = sys.argv[1:]
+    args = sys.argv[start_argument_idx:]
 
     # Set up data_dir config based on system (i.e., mac or windows)
     if sys.platform == "win32":
@@ -76,4 +76,8 @@ if __name__ == '__main__':
         "debug": debug_config(**config["debug"])
     }
 
-    run_training(config_dict)
+    return config_dict
+
+
+if __name__ == '__main__':
+    run_training(prepare_config())
