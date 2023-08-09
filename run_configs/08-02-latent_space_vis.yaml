@@ -2,7 +2,7 @@ data:
   amp_pipeline: null
   bvp_agg: sum
   bvp_pipeline: 1
-  data_dir: ../data
+  data_dir: ../../data
   dataset_type: single_user_small
   downsample_multiplier: 2
   phase_pipeline: null
@@ -12,12 +12,12 @@ debug:
   offline: false
   on_cpu: false
 embed:
-  actor_dropout: 0.47659867398346056
-  actor_num_layers: 6
+  actor_dropout: 0.4
+  actor_num_layers: 4
   anneal_lr: true
   clip_coef: 0.2
   clip_value_loss: true
-  critic_dropout: 0.562851983704799
+  critic_dropout: 0.5
   critic_num_layers: 4
   embed_size: 33
   entropy_coef: 0.0
@@ -35,7 +35,7 @@ encoder:
   activation_fn: leaky
   dropout: 0.1758769924448918
   initial_kernel_size: 7
-  latent_dim: 90
+  latent_dim: 60
   num_conv_layers: 3
 mt:
   decoder_activation_fn: leaky
@@ -49,7 +49,7 @@ optim_loss:
   lr: 0.0002207669098297281
   optimizer: adam
 train:
-  batch_size: 32
-  checkpoint_dir: ../checkpoints
-  epochs: 75
+  batch_size: 16
+  checkpoint_dir: ../../checkpoints
+  epochs: 100
   ui: tqdm
