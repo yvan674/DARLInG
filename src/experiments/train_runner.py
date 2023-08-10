@@ -115,7 +115,8 @@ def run_training(config: dict[str, dict[str, any]]):
     train_dataloader = DataLoader(train_dataset,
                                   config["train"]["batch_size"],
                                   num_workers=num_workers,
-                                  collate_fn=widar_collate_fn)
+                                  collate_fn=widar_collate_fn,
+                                  shuffle=True)
     valid_dataloader = DataLoader(valid_dataset,
                                   config["train"]["batch_size"],
                                   num_workers=num_workers,
@@ -136,8 +137,7 @@ def run_training(config: dict[str, dict[str, any]]):
     # Loss and optimizers
     optimizer = config["optim_loss"]["optimizer"]
     lr = config["optim_loss"]["lr"]
-    loss_fn = MultiJointLoss(config["optim_loss"]["alpha"],
-                             config["optim_loss"]["beta"])
+    loss_fn = MultiJointLoss(config["optim_loss"]["alpha"])
     optimizer_map = {"adam": Adam, "sgd": SGD}
 
     encoder_optimizer = optimizer_map[optimizer](encoder.parameters(), lr=lr)
