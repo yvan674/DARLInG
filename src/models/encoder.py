@@ -100,7 +100,7 @@ class Encoder(nn.Module):
         def conv_block(in_channels, out_channels, kernel_size):
             return nn.Sequential(
                 nn.Conv2d(in_channels=in_channels, out_channels=out_channels,
-                          kernel_size=kernel_size, stride=2, padding=1),
+                          kernel_size=kernel_size, padding=1),
                 nn.BatchNorm2d(out_channels),
                 conv_ac_func(),
                 nn.Dropout(dropout)
