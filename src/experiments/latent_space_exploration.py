@@ -142,6 +142,7 @@ def main(checkpoint_fp: Path, config_fp: Path, data_dir_fp: Path):
     # SECTION Visualize spaces
     for space, space_name in zip([latent_space, embed_space],
                                  ["latent_space", "embed_space"]):
+        print(f"Computing TSNE for {space_name}...")
         tsne = TSNE(n_components=2, random_state=0)
         space = tsne.fit_transform(space)
 
