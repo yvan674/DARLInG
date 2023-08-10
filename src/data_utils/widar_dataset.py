@@ -186,6 +186,9 @@ class WidarDataset(Dataset):
             case _:
                 raise ValueError("Never should've come here - Bandit from "
                                  "Skyrim")
+
+        # Normalize to 0, 1
+        out = (out - np.min(out)) / (np.max(out) - np.min(out))
         return out
 
     def __str__(self):
