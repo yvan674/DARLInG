@@ -191,7 +191,6 @@ class Training:
         self.ui.update_status("Training VAE model...")
         for batch_idx, (amp, phase, bvp, info) in enumerate(train_loader):
             self.step += 1
-            start_time = perf_counter()
             pass_result = self._forward_pass(amp, phase, bvp, info["gesture"],
                                              info, device,
                                              no_grad_vae=False,
@@ -211,8 +210,7 @@ class Training:
             # Calculate metrics
             elbo_loss_value = pass_result["elbo_loss"].item()
             null_loss_value = pass_result["null_loss"].item()
-            joint_loss_value = (elbo_loss_value
-                                + null_loss_value)
+            joint_loss_value = pass_result["joint_loss"].item()
             # Check if any loss values are nan
             should_exit = (np.isnan(elbo_loss_value)
                            or np.isnan(null_loss_value)
@@ -220,12 +218,11 @@ class Training:
 
             if pass_result["embed_loss"] is not None:
                 embed_loss_value = pass_result["embed_loss"].item()
-                joint_loss_value += embed_loss_value
                 loss_diff = embed_loss_value - null_loss_value
                 if np.isnan(embed_loss_value):
                     should_exit = True
             else:
-                loss_diff = 0.0
+                loss_diff = float("nan")
                 embed_loss_value = float("nan")
 
             loss_vals = {
@@ -254,8 +251,6 @@ class Training:
                     bvp, pass_result["bvp_null"], pass_result["bvp_embed"],
                     "train"
                 ))
-
-            current_time = perf_counter()
 
             ui_data = {"epoch": epoch, "batch": batch_idx}
             ui_data.update(**loss_vals)
@@ -448,7 +443,6 @@ class Training:
         bvp_embed = None
 
         for batch_idx, (amp, phase, bvp, info) in enumerate(valid_loader):
-            start_time = perf_counter()
             pass_result = self._forward_pass(amp, phase, bvp, info["gesture"],
                                              info, device,
                                              True, True)
@@ -471,8 +465,6 @@ class Training:
             gesture_gts.append(info["gesture"].detach())
             gesture_null_preds.append(pass_result["gesture_null"])
             gesture_embed_preds.append(pass_result["gesture_embed"])
-
-            current_time = perf_counter()
 
             data_dict = {"valid_loss": joint_loss_value,
                          "loss_diff": 0.,
