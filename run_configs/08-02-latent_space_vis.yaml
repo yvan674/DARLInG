@@ -2,7 +2,7 @@ data:
   amp_pipeline: null
   bvp_agg: sum
   bvp_pipeline: 1
-  data_dir: ../../data
+  data_dir: "F:\\Offline Docs\\Master Thesis\\data"
   dataset_type: single_user_small
   downsample_multiplier: 2
   phase_pipeline: null
@@ -34,22 +34,22 @@ embed:
 encoder:
   activation_fn: leaky
   dropout: 0.1758769924448918
-  initial_kernel_size: 7
+  initial_kernel_size: 8
   latent_dim: 60
-  num_conv_layers: 3
+  num_conv_layers: 4
 mt:
   decoder_activation_fn: leaky
   decoder_dropout: 0.25625995103954213
   predictor_activation_fn: selu
   predictor_dropout: 0.28004446618639806
-  predictor_num_layers: 4
+  predictor_num_layers: 6
 optim_loss:
-  alpha: 8.003575917644911e-05
+  alpha: 0
   beta: 0.5
-  lr: 0.0002207669098297281
+  lr: 0.00005
   optimizer: adam
 train:
-  batch_size: 16
-  checkpoint_dir: ../../checkpoints
+  batch_size: 32
+  checkpoint_dir: ../checkpoints
   epochs: 100
   ui: tqdm

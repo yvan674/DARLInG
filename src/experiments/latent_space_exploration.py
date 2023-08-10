@@ -2,10 +2,10 @@
 from argparse import ArgumentParser, Namespace
 from pathlib import Path
 
-from tqdm import tqdm
-import torch
 import matplotlib.pyplot as plt
+import torch
 from sklearn.manifold import TSNE
+from tqdm import tqdm
 
 from data_utils.widar_dataset import WidarDataset
 from models.model_builder import build_model
@@ -138,7 +138,6 @@ def main(checkpoint_fp: Path, config_fp: Path, data_dir_fp: Path):
 
     latent_space = torch.cat(latent_space, dim=0)
     embed_space = torch.cat(embed_space, dim=0)
-
 
     # SECTION Visualize spaces
     for space, space_name in zip([latent_space, embed_space],
