@@ -28,7 +28,7 @@ class MultiJointLoss(nn.Module):
         """
         super().__init__()
 
-        self.mse = nn.MSELoss(reduction='mean')
+        self.l1loss = nn.L1Loss(reduction='mean')
         self.ce = nn.CrossEntropyLoss()
         self.alpha = alpha
         self.neg_alpha = 1. - alpha
@@ -53,9 +53,9 @@ class MultiJointLoss(nn.Module):
         """Calculates ELBO loss based on Practical 5.2 of 2AMM10 Deep Learning.
         """
         # First calculate reconstruction loss
-        null_reconstr_loss = self.mse(target_img, null_img)
+        null_reconstr_loss = self.l1loss(target_img, null_img)
         if embed_img is not None:
-            embed_reconstr_loss = self.mse(target_img, embed_img)
+            embed_reconstr_loss = self.l1loss(target_img, embed_img)
             reconstr_loss = (null_reconstr_loss + embed_reconstr_loss) * 0.5
         else:
             embed_reconstr_loss = None
