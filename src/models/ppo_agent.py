@@ -86,42 +86,24 @@ class PPOAgent(BaseEmbeddingAgent):
             torch.zeros(1, domain_embedding_size)
         )
 
-        self.optimizer = torch.optim.Adam(self.ppo.parameters(), lr=lr,
-                                          eps=1e-5)
-
-    @staticmethod
-    def _layer_init(layer, std=np.sqrt(2), bias_const=0.0) -> nn.Module:
-        """We use an explicit layer initialization."""
-        nn.init.orthogonal_(layer.weight, std)
-        nn.init.constant_(layer.bias, bias_const)
-        return layer
+        self.optimizer = torch.optim.Adam(
+            list(self.critic.parameters()) + list(self.actor_mean.parameters()),
+            lr=lr,
+            eps=1e-5
+        )
 
     def _linear_block(self, in_dim, out_dim, std=np.sqrt(2), bias_const=0.0,
                       dropout=0.3):
+
+        linear = nn.Linear(in_dim, out_dim, std=std, bias_const=bias_const)
+        nn.init.orthogonal_(linear.weight, std)
+        nn.init.constant_(linear.bias, bias_const)
+
         return nn.Sequential(
-            self._layer_init(nn.Linear(in_dim, out_dim),
-                             std=std, bias_const=bias_const),
+            linear,
             nn.Dropout(dropout),
             nn.Tanh()
         )
-
-    def _build_network(self,
-                       in_features: int,
-                       out_features: int,
-                       num_layers: int,
-                       layer_dropout: float):
-        """Builds a fully connected network based on parameters."""
-        output_layers = [2 ** (i + 4) for i in range(num_layers)]
-        output_sizes = [(in_features, output_layers[0])] + \
-                       [(output_layers[i], output_layers[i + 1])
-                        for i in range(len(output_layers) - 1)] + \
-                       [(output_layers[-1], out_features)]
-
-        network = nn.Sequential(
-            *[self._linear_block(size[0], size[1], dropout=layer_dropout)
-              for size in output_sizes]
-        )
-        return network
 
     def set_anneal_lr(self, epoch, total_epochs):
         """Set a new learning rate using annealing."""

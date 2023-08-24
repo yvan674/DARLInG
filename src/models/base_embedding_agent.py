@@ -5,9 +5,10 @@ The base class for the domain embedding agent
 Author:
     Yvan Satyawan <y_satyawan@hotmail.com>
 """
-from abc import ABC, abstractmethod
+from abc import ABC, abstractmethod, abstractstaticmethod
 
 import torch
+import torch.nn as nn
 
 
 class BaseEmbeddingAgent(ABC):
@@ -17,6 +18,29 @@ class BaseEmbeddingAgent(ABC):
     def __call__(self, *args, **kwargs) -> torch.Tensor:
         """Make the class callable, like an nn.Module class."""
         return self.produce_action(*args, **kwargs)
+
+    @staticmethod
+    @abstractmethod
+    def _linear_block(in_dim, out_dim, **kwargs) -> nn.Module:
+        raise NotImplementedError
+
+    def _build_network(self,
+                       in_features: int,
+                       out_features: int,
+                       num_layers: int,
+                       layer_dropout: float):
+        """Builds a fully connected network based on parameters."""
+        output_layers = [2 ** (i + 4) for i in range(num_layers)]
+        output_sizes = [(in_features, output_layers[0])] + \
+                       [(output_layers[i], output_layers[i + 1])
+                        for i in range(len(output_layers) - 1)] + \
+                       [(output_layers[-1], out_features)]
+
+        network = nn.Sequential(
+            *[self._linear_block(size[0], size[1], dropout=layer_dropout)
+              for size in output_sizes]
+        )
+        return network
 
     @abstractmethod
     def produce_action(self, observation: torch.Tensor,
