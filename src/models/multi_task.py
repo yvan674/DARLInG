@@ -121,6 +121,7 @@ class MultiTaskHead(nn.Module):
         super().__init__()
 
         in_features = domain_label_size + encoder_latent_dim
+        self.domain_label_size = domain_label_size
 
         self.decoder = Decoder(decoder_ac_func,
                                decoder_dropout,
