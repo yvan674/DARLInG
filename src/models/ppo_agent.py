@@ -1,15 +1,16 @@
 """Proximal Policy Optimization.
 
 Based on the cleanrl work by vwxyzjn.
-<github.com/vwxyjn/cleanrl>
+<github.com/vwxyzjn/cleanrl>
 
 Author:
     Yvan Satyawan <y_satyawan@hotmail.com>
 """
+import numpy as np
 import torch
+import torch.nn as nn
 
 from models.base_embedding_agent import BaseEmbeddingAgent
-from models.ppo import PPO
 
 
 class PPOAgent(BaseEmbeddingAgent):
@@ -73,12 +74,54 @@ class PPOAgent(BaseEmbeddingAgent):
 
         self.input_size = input_size
 
-        self.ppo = PPO(input_size, domain_embedding_size,
-                       critic_num_layers, critic_dropout,
-                       actor_num_layers, actor_dropout)
+        self.critic = self._build_network(input_size,
+                                          1,
+                                          critic_num_layers,
+                                          critic_dropout)
+        self.actor_mean = self._build_network(input_size,
+                                              domain_embedding_size,
+                                              actor_num_layers,
+                                              actor_dropout)
+        self.actor_log_sigma = nn.Parameter(
+            torch.zeros(1, domain_embedding_size)
+        )
 
         self.optimizer = torch.optim.Adam(self.ppo.parameters(), lr=lr,
                                           eps=1e-5)
+
+    @staticmethod
+    def _layer_init(layer, std=np.sqrt(2), bias_const=0.0) -> nn.Module:
+        """We use an explicit layer initialization."""
+        nn.init.orthogonal_(layer.weight, std)
+        nn.init.constant_(layer.bias, bias_const)
+        return layer
+
+    def _linear_block(self, in_dim, out_dim, std=np.sqrt(2), bias_const=0.0,
+                      dropout=0.3):
+        return nn.Sequential(
+            self._layer_init(nn.Linear(in_dim, out_dim),
+                             std=std, bias_const=bias_const),
+            nn.Dropout(dropout),
+            nn.Tanh()
+        )
+
+    def _build_network(self,
+                       in_features: int,
+                       out_features: int,
+                       num_layers: int,
+                       layer_dropout: float):
+        """Builds a fully connected network based on parameters."""
+        output_layers = [2 ** (i + 4) for i in range(num_layers)]
+        output_sizes = [(in_features, output_layers[0])] + \
+                       [(output_layers[i], output_layers[i + 1])
+                        for i in range(len(output_layers) - 1)] + \
+                       [(output_layers[-1], out_features)]
+
+        network = nn.Sequential(
+            *[self._linear_block(size[0], size[1], dropout=layer_dropout)
+              for size in output_sizes]
+        )
+        return network
 
     def set_anneal_lr(self, epoch, total_epochs):
         """Set a new learning rate using annealing."""
@@ -88,22 +131,35 @@ class PPOAgent(BaseEmbeddingAgent):
         new_lr = frac * self.lr
         self.optimizer.param_groups[0]["lr"] = new_lr
 
-    def _produce_action(self, observation: torch.Tensor,
-                        info: dict[str, list[any]] = None,
-                        action: torch.Tensor = None,
-                        **kwargs) -> torch.Tensor:
-        return self.ppo.get_action_and_value(observation, action)
+    def produce_action(self, observation: torch.Tensor,
+                       info: dict[str, list[any]] = None,
+                       action: torch.Tensor = None,
+                       **kwargs) -> any:
+        """Gets both the actor's and critic's response."""
+        action_mean = self.actor_mean(observation)
+        action_log_sigma = self.actor_log_sigma.expand_as(action_mean)
+        action_std = torch.exp(action_log_sigma)
+        probs = torch.distributions.Normal(action_mean, action_std)
+        if action is None:
+            action = probs.sample()
+
+        return (action,
+                probs.log_prob(action).sum(1),
+                probs.entropy().sum(1),
+                self.critic(observation))
 
     def process_reward(self, observation: torch.Tensor, reward: float):
         pass
 
     def train(self):
         """Set the model to train mode."""
-        self.ppo.train()
+        self.critic.train()
+        self.actor_mean.train()
 
     def eval(self):
         """Set the model to eval mode."""
-        self.ppo.eval()
+        self.critic.eval()
+        self.actor_mean.eval()
 
     def state_dict(self):
         return {
@@ -123,7 +179,8 @@ class PPOAgent(BaseEmbeddingAgent):
             "max_grad_norm": self.max_grad_norm,
             "target_kl": self.target_kl,
             "input_size": self.input_size,
-            "ppo": self.ppo.state_dict(),
+            "ppo": {"critic_state_dict": self.critic.state_dict(),
+                    "actor_mean_state_dict": self.actor_mean.state_dict()},
             "domain_embedding_size": self.domain_embedding_size,
             "optimizer": self.optimizer.state_dict()
         }
@@ -147,9 +204,11 @@ class PPOAgent(BaseEmbeddingAgent):
                          value_func_coef=sd["value_func_coef"],
                          max_grad_norm=sd["max_grad_norm"],
                          target_kl=sd["target_kl"])
-        agent.ppo.load_state_dict(sd["ppo"])
+        agent.critic.load_state_dict(sd["ppo"]["critic_state_dict"])
+        agent.actor_mean.load_state_dict(sd["ppo"]["actor_mean_state_dict"])
         agent.optimizer.load_state_dict(sd["optimizer"])
         return agent
 
     def to(self, device: int | torch.device | None):
-        self.ppo.to(device)
+        self.critic.to(device)
+        self.actor_mean.to(device)

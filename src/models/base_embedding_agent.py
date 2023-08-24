@@ -14,15 +14,15 @@ class BaseEmbeddingAgent(ABC):
     def __init__(self, domain_embedding_size: int):
         self.domain_embedding_size = domain_embedding_size
 
-    @abstractmethod
-    def _produce_action(self, observation: torch.Tensor,
-                        info: dict[str, list[any]], **kwargs) -> torch.Tensor:
-        """Produces an action based on an observation and info dict."""
-        raise NotImplementedError
-
     def __call__(self, *args, **kwargs) -> torch.Tensor:
         """Make the class callable, like an nn.Module class."""
-        return self._produce_action(*args, **kwargs)
+        return self.produce_action(*args, **kwargs)
+
+    @abstractmethod
+    def produce_action(self, observation: torch.Tensor,
+                       info: dict[str, list[any]], **kwargs) -> torch.Tensor:
+        """Produces an action based on an observation and info dict."""
+        raise NotImplementedError
 
     @abstractmethod
     def process_reward(self, observation: torch.Tensor, reward: float):
