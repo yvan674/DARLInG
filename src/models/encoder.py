@@ -145,6 +145,7 @@ class Encoder(nn.Module):
         mu = self.fc_mu(h)
         log_sigma = self.fc_sigma(h)
         z = self.reparameterization(mu, log_sigma)
+        z = torch.sigmoid(z)
 
         return z, mu, log_sigma
 
