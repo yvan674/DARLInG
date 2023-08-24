@@ -7,10 +7,9 @@ import torch
 from gymnasium import spaces
 
 from data_utils.widar_dataset import WidarDataset
+from models.base_embedding_agent import BaseEmbeddingAgent
 from models.encoder import Encoder
 from models.multi_task import MultiTaskHead
-
-# TODO: Null action
 
 
 class LatentEnvironment(gym.Env):
@@ -20,6 +19,7 @@ class LatentEnvironment(gym.Env):
                  encoder: Encoder,
                  null_head: MultiTaskHead,
                  embed_head: MultiTaskHead,
+                 null_agent: BaseEmbeddingAgent,
                  bvp_pipeline: bool,
                  device: torch.device,
                  dataset: WidarDataset,
@@ -27,6 +27,7 @@ class LatentEnvironment(gym.Env):
         self.encoder = encoder
         self.null_head = null_head
         self.embed_head = embed_head
+        self.null_agent = null_agent
         self.dataset = dataset,
         self.bvp_pipeline = bvp_pipeline
         self.device = device
@@ -88,6 +89,7 @@ class LatentEnvironment(gym.Env):
 
         reward = self.reward_function(self.null_head,
                                       self.embed_head,
+                                      self.null_agent,
                                       self.last_obs,
                                       self.last_bvp,
                                       action)

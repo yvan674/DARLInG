@@ -6,11 +6,16 @@ Authors:
     Yvan Satyawan <y_satyawan@hotmail.com>
 """
 import torch
+from torch import nn as nn
 
 from models.base_embedding_agent import BaseEmbeddingAgent
 
 
 class NullAgent(BaseEmbeddingAgent):
+    @staticmethod
+    def _linear_block(in_dim, out_dim, **kwargs) -> nn.Module:
+        pass
+
     def __init__(self, domain_embedding_size: int, null_value: float | None):
         super().__init__(domain_embedding_size=domain_embedding_size)
         self.device = None
@@ -23,8 +28,8 @@ class NullAgent(BaseEmbeddingAgent):
         return f"NullAgent(embedding_length={self.domain_embedding_size}, " \
                f"null_value={self.null_value})"
 
-    def _produce_action(self, observation: torch.Tensor,
-                        info: dict[str, list[any]], **kwargs) -> torch.Tensor:
+    def produce_action(self, observation: torch.Tensor,
+                       info: dict[str, list[any]], **kwargs) -> torch.Tensor:
         batch_size = len(info["user"])
 
         return torch.full((batch_size, self.domain_embedding_size),
