@@ -1,0 +1,40 @@
+data:
+  amp_pipeline: null
+  bvp_agg: sum
+  bvp_pipeline: 1
+  data_dir: ../../data
+  dataset_type: single_user_small
+  downsample_multiplier: 2
+  phase_pipeline: null
+  transformation: null
+debug:
+  is_debug: true
+  offline: true
+  on_cpu: false
+embed:
+  agent_type: ppo
+  reward_function: contrastive
+  start_epoch: 5
+  value_type: probability-measure
+encoder:
+  activation_fn: leaky
+  dropout: 0.18
+  initial_kernel_size: 7
+  latent_dim: 60
+  num_conv_layers: 3
+mt:
+  decoder_activation_fn: leaky
+  decoder_dropout: 0.26
+  predictor_activation_fn: selu
+  predictor_dropout: 0.28
+  predictor_num_layers: 4
+optim_loss:
+  alpha: 8.0e-05
+  beta: 0.5
+  lr: 0.00022
+  optimizer: adam
+train:
+  batch_size: 16
+  checkpoint_dir: ../../checkpoints
+  epochs: 10
+  ui: tqdm

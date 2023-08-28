@@ -35,6 +35,7 @@ class AmpPhaseEncoder(nn.Module):
         self.phase_encoder = Encoder(conv_ac_func, dropout, latent_dim,
                                      fc_input_size, input_dim,
                                      initial_kernel_size, conv_output_sizes)
+        self.latent_dim = self.amp_encoder.latent_dim
 
     def forward(self, amp, phase, bvp):
         z_amp, mu_amp, log_sigma_amp = self.amp_encoder(amp)
@@ -63,6 +64,7 @@ class BVPEncoder(nn.Module):
         self.encoder = Encoder(conv_ac_func, dropout, latent_dim, fc_input_size,
                                input_dim, initial_kernel_size,
                                conv_output_sizes)
+        self.latent_dim = self.encoder.latent_dim
 
     def forward(self, amp, phase, bvp):
         return self.encoder(bvp)

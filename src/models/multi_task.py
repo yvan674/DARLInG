@@ -6,6 +6,7 @@ Author:
     Yvan Satyawan <y_satyawan@hotmail.com>
     Jonas Niederle <github.com/jmniederle>
 """
+import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
@@ -139,3 +140,23 @@ class MultiTaskHead(nn.Module):
         y_gesture = self.predictor(z)
 
         return y_bvp, y_gesture
+
+
+def run_heads(null_head, embed_head, null_embedding, agent_embedding, z):
+    """Runs both heads together.
+
+    Returns:
+        bvp_null, gesture_null, bvp_embed, gesture_embed. Embed values are
+        None if the embed_head is None.
+    """
+    bvp_null, gesture_null = null_head(
+        torch.cat([z, null_embedding], dim=1)
+    )
+    if embed_head is not None:
+        bvp_embed, gesture_embed = embed_head(
+            torch.cat([z, agent_embedding], dim=1)
+        )
+    else:
+        bvp_embed, gesture_embed = None, None
+
+    return bvp_null, gesture_null, bvp_embed, gesture_embed

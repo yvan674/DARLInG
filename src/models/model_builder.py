@@ -6,14 +6,13 @@ from time import perf_counter
 
 import torch
 import torch.nn as nn
+from stable_baselines3 import DDPG
 
 from data_utils.widar_dataset import WidarDataset
 from models.encoder import Encoder, BVPEncoder, AmpPhaseEncoder
 from models.multi_task import MultiTaskHead
 from models.known_domain_agent import KnownDomainAgent
 from models.null_agent import NullAgent
-from models.ppo_agent import PPOAgent
-
 
 ACTIVATION_FN_MAP = {"relu": nn.ReLU,
                      "leaky": nn.LeakyReLU,
@@ -135,37 +134,39 @@ def build_model(config: dict[str, any],
         domain_label_size=domain_embedding_size
     )
 
-    # SECTION Embed Agents
+    # SECTION Null Agent
     if config["embed"]["value_type"] in ("known", "one-hot"):
         null_value = 0.
     else:
         null_value = None
 
     null_agent = NullAgent(domain_embedding_size, null_value)
-    if config["embed"]["value_type"] == "known":
-        embed_agent = KnownDomainAgent(domain_embedding_size)
-    else:
-        embed_agent = PPOAgent(
-            input_size=config["encoder"]["latent_dim"],
-            domain_embedding_size=domain_embedding_size,
-            critic_num_layers=config["embed"]["critic_num_layers"],
-            critic_dropout=config["embed"]["critic_dropout"],
-            actor_num_layers=config["embed"]["actor_num_layers"],
-            actor_dropout=config["embed"]["actor_dropout"],
-            lr=config["embed"]["lr"],
-            anneal_lr=config["embed"]["anneal_lr"],
-            gamma=config["embed"]["gamma"],
-            gae_lambda=config["embed"]["gae_lambda"],
-            norm_advantage=config["embed"]["norm_advantage"],
-            clip_coef=config["embed"]["clip_coef"],
-            clip_value_loss=config["embed"]["clip_value_loss"],
-            entropy_coef=config["embed"]["entropy_coef"],
-            value_func_coef=config["embed"]["value_func_coef"],
-            max_grad_norm=config["embed"]["max_grad_norm"],
-            target_kl=config["embed"]["target_kl"],
-        )
+
+    #
+    # if config["embed"]["value_type"] == "known":
+    #     embed_agent = KnownDomainAgent(domain_embedding_size)
+    # else:
+    #     embed_agent = PPOAgent(
+    #         input_size=config["encoder"]["latent_dim"],
+    #         domain_embedding_size=domain_embedding_size,
+    #         critic_num_layers=config["embed"]["critic_num_layers"],
+    #         critic_dropout=config["embed"]["critic_dropout"],
+    #         actor_num_layers=config["embed"]["actor_num_layers"],
+    #         actor_dropout=config["embed"]["actor_dropout"],
+    #         lr=config["embed"]["lr"],
+    #         anneal_lr=config["embed"]["anneal_lr"],
+    #         gamma=config["embed"]["gamma"],
+    #         gae_lambda=config["embed"]["gae_lambda"],
+    #         norm_advantage=config["embed"]["norm_advantage"],
+    #         clip_coef=config["embed"]["clip_coef"],
+    #         clip_value_loss=config["embed"]["clip_value_loss"],
+    #         entropy_coef=config["embed"]["entropy_coef"],
+    #         value_func_coef=config["embed"]["value_func_coef"],
+    #         max_grad_norm=config["embed"]["max_grad_norm"],
+    #         target_kl=config["embed"]["target_kl"],
+    #     )
 
     print(f"Completed model building. "
           f"Took {perf_counter() - start_time:.2f} s.")
 
-    return encoder, null_head, null_agent, embed_agent
+    return encoder, null_head, null_agent

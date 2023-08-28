@@ -4,37 +4,39 @@ The gym environment wrapper for the latent space.
 """
 import gymnasium as gym
 import torch
+import torch.nn as nn
+from torch.utils.data import Dataset
 from gymnasium import spaces
 
-from data_utils.widar_dataset import WidarDataset
+
 from models.base_embedding_agent import BaseEmbeddingAgent
-from models.encoder import Encoder
-from models.multi_task import MultiTaskHead
 
 
 class LatentEnvironment(gym.Env):
     metadata = {"render_modes": ["none"]}
 
     def __init__(self,
-                 encoder: Encoder,
-                 null_head: MultiTaskHead,
-                 embed_head: MultiTaskHead,
+                 encoder: nn.Module,
+                 null_head: nn.Module,
+                 embed_head: nn.Module,
                  null_agent: BaseEmbeddingAgent,
                  bvp_pipeline: bool,
                  device: torch.device,
-                 dataset: WidarDataset,
+                 dataset: Dataset,
                  reward_function: callable):
         self.encoder = encoder
         self.null_head = null_head
         self.embed_head = embed_head
         self.null_agent = null_agent
-        self.dataset = dataset,
+        self.dataset = dataset
         self.bvp_pipeline = bvp_pipeline
         self.device = device
         self.reward_function = reward_function
 
-        self.last_bvp = None
+        # obs is the cpu version, z is the device version.
         self.last_obs = None
+        self.last_z = None
+        self.last_info = None
 
         self.current_step = 0
 
@@ -50,34 +52,30 @@ class LatentEnvironment(gym.Env):
             shape=[self.null_head.domain_label_size]
         )
 
-    def _get_obs(self, amp, phase, bvp):
-        if self.bvp_pipeline:
-            bvp = bvp.to(self.device)
-        else:
-            amp = amp.to(self.device)
-            phase = phase.to(self.device)
-            bvp = bvp.to(self.device)
-        with torch.no_grad():
-            obs, _, _ = self.encoder(amp, phase, bvp)
-
-        return obs
-
-    def _get_and_set_obs(self, step_num):
+    def _set_obs(self, step_num):
         amp, phase, bvp, info = self.dataset[step_num]
-        self.last_bvp = bvp
-        obs = self._get_obs(amp, phase, bvp)
-        self.last_obs = obs
 
-        return obs, info
+        if self.bvp_pipeline:
+            bvp = bvp.to(self.device).unsqueeze(0)
+        else:
+            amp = amp.to(self.device).unsqueeze(0)
+            phase = phase.to(self.device)
+            bvp = bvp.to(self.device).unsqueeze(0)
+        with torch.no_grad():
+            z, _, _ = self.encoder(amp, phase, bvp)
+
+        self.last_z = z.detach()
+        self.last_obs = self.last_z.cpu()
+        self.last_info = info
 
     def reset(self, seed=None, options=None):
         super().reset(seed=seed, options=options)
         self.current_step = 0
 
-        obs, info = self._get_and_set_obs(0)
+        self._set_obs(0)
 
-        self.step += 1
-        return obs, info
+        self.current_step += 1
+        return self.last_obs, self.last_info
 
     def step(self, action):
         if self.current_step == len(self.dataset):
@@ -90,10 +88,11 @@ class LatentEnvironment(gym.Env):
         reward = self.reward_function(self.null_head,
                                       self.embed_head,
                                       self.null_agent,
+                                      self.last_z,
                                       self.last_obs,
-                                      self.last_bvp,
+                                      self.last_info,
                                       action)
         # Gets the next observation
-        obs, info = self._get_and_set_obs(curr)
+        self._set_obs(curr)
 
-        return obs, reward, terminated, False, info
+        return self.last_obs, reward, terminated, False, self.last_info
