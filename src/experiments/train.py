@@ -659,6 +659,8 @@ class Training:
         self.null_head.to(device)
         # self.embedding_agent.to(device)
 
+        total_agent_timesteps = agent_epochs
+
         for epoch in range(epochs):
             # Check if we should start training the agent yet
             if epoch == self.agent_start_epoch:
@@ -697,10 +699,13 @@ class Training:
                     )
                     self.embedding_agent = DDPG("MlpPolicy",
                                                 self.env,
-                                                action_noise=action_noise)
+                                                action_noise=action_noise,
+                                                device=device)
                 elif self.embedding_agent == "ppo":
                     self.embedding_agent = PPO("MlpPolicy",
-                                               self.env)
+                                               self.env,
+                                               device=device)
+                    total_agent_timesteps *= len(train_loader.dataset)
 
             # Train the embedding agent if desired
             if train_embedding_agent and epoch >= self.agent_start_epoch:
@@ -710,11 +715,10 @@ class Training:
                 if self.embed_head is not None:
                     self.embed_head.eval()
 
-                total_timesteps = len(train_loader.dataset) * agent_epochs
-                self.ui.update_status(f"Training agent for {total_timesteps} "
-                                      f"steps...")
+                self.ui.update_status(f"Training agent for "
+                                      f"{total_agent_timesteps} steps...")
 
-                self.embedding_agent.learn(total_timesteps)
+                self.embedding_agent.learn(total_agent_timesteps)
 
             # Train the VAE portion of the model
             self.encoder.train()

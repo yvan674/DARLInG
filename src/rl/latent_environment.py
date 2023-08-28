@@ -73,7 +73,6 @@ class LatentEnvironment(gym.Env):
         self.current_step = 0
 
         self._set_obs(0)
-
         self.current_step += 1
         return self.last_obs, self.last_info
 
@@ -94,5 +93,7 @@ class LatentEnvironment(gym.Env):
                                       action)
         # Gets the next observation
         self._set_obs(curr)
+        self.current_step += 1
+        print(curr)
 
         return self.last_obs, reward, terminated, False, self.last_info

@@ -12,7 +12,7 @@ debug:
   offline: true
   on_cpu: false
 embed:
-  agent_type: ppo
+  agent_type: ddpg
   reward_function: contrastive
   start_epoch: 5
   value_type: probability-measure
