@@ -14,6 +14,7 @@ import torch
 
 from signal_processing.base import SignalProcessor
 from signal_to_image.base import SignalToImageTransformer
+from signal_processing.downsample import Downsample
 from signal_processing.lowpass_filter import LowPassFilter
 from signal_processing.phase_derivative import PhaseDerivative
 from signal_processing.phase_unwrap import PhaseUnwrap
@@ -63,10 +64,7 @@ class Pipeline(SignalProcessor):
         for s in str_list:
             match s:
                 case "lowpass_filter":
-                    processors.append(LowPassFilter(
-                        250 // downsample_multiplier,
-                        1000 // downsample_multiplier
-                    ))
+                    processors.append(LowPassFilter(250, 1000))
                 case "phase_derivative":
                     processors.append(PhaseDerivative())
                 case "phase_filter":
@@ -77,6 +75,8 @@ class Pipeline(SignalProcessor):
                     processors.append(torch.from_numpy)
                 case "standard_scalar":
                     processors.append(standard_scaler)
+                case "downsample":
+                    processors.append(Downsample(downsample_multiplier))
                 case "transform":
                     processors.append(transform)
 

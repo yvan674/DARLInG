@@ -23,7 +23,10 @@ class NullAgent:
                f"null_value={self.null_value})"
 
     def __call__(self, z, info: dict[str, list[any]], **kwargs):
-        batch_size = len(info["user"])
+        if isinstance(info["user"], int):
+            batch_size = 1
+        else:
+            batch_size = len(info["user"])
 
         return torch.full((batch_size, self.domain_embedding_size),
                           fill_value=self.null_value,

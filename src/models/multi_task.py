@@ -142,13 +142,19 @@ class MultiTaskHead(nn.Module):
         return y_bvp, y_gesture
 
 
-def run_heads(null_head, embed_head, null_embedding, agent_embedding, z):
+def run_heads(null_head: MultiTaskHead,
+              embed_head: MultiTaskHead,
+              null_embedding: torch.Tensor,
+              agent_embedding: torch.Tensor,
+              z: torch.Tensor):
     """Runs both heads together.
 
     Returns:
         bvp_null, gesture_null, bvp_embed, gesture_embed. Embed values are
         None if the embed_head is None.
     """
+    if len(z.shape) > 1:
+        z = z.flatten().unsqueeze(0)
     bvp_null, gesture_null = null_head(
         torch.cat([z, null_embedding], dim=1)
     )

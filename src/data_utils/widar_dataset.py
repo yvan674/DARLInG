@@ -18,7 +18,7 @@ from signal_processing.pipeline import Pipeline
 
 
 class WidarDataset(Dataset):
-    csi_length = 2048  # Tha max lengths we want to use.
+    csi_length = 2000  # Tha max lengths we want to use.
 
     def __init__(self, root_path: Path, split_name: str, dataset_type: str,
                  downsample_multiplier: int = 1, return_bvp: bool = True,
@@ -90,8 +90,7 @@ class WidarDataset(Dataset):
         self.split_name = split_name
         self.dataset_type = dataset_type
         # ts_length is the array size returned given the downsample multiplier.
-        self.ts_length = self.csi_length // downsample_multiplier
-        self.downsample_multiplier = downsample_multiplier
+        # self.ts_length = self.csi_length // downsample_multiplier
         self.return_bvp = return_bvp
         self.return_csi = return_csi
 
@@ -201,17 +200,17 @@ class WidarDataset(Dataset):
 
     def _stack_csi_arrays(self, csi_arrays: List[np.ndarray]) -> np.ndarray:
         """Stacks the ragged CSI arrays."""
-        stacked_array = np.zeros((self.ts_length, 30, 18), dtype=complex)
+        stacked_array = np.zeros((self.csi_length, 30, 18),
+                                 dtype=complex)
 
         for i, arr in enumerate(csi_arrays):
-            # First resample the array and get rid of the last dim, since it's
-            # always 1.
-            arr = arr[::self.downsample_multiplier, :, :, 0]
+            # Get rid of the last dim
+            arr = arr[:, :, :, 0]
 
-            if arr.shape[0] >= self.ts_length:
-                # If resampled array is longer than our desired array, we cut
+            if arr.shape[0] >= self.csi_length:
+                # If array is longer than our desired array, we cut
                 # it off
-                cutoff = self.ts_length
+                cutoff = self.csi_length
             else:
                 # Otherwise, the cutoff is the length of the array
                 cutoff = arr.shape[0]
@@ -232,15 +231,6 @@ class WidarDataset(Dataset):
 
         data_record = self.data_records[data_records_index]
         csi_fps = data_record[f"csi_paths_{csi_index}"]
-        if self.return_csi:
-            csi_files = [self._load_csi_file(fp)
-                         for fp in csi_fps]
-            csi = self._stack_csi_arrays(csi_files)
-            csi = csi.copy()  # reset strides
-            amp = np.absolute(csi).astype(np.float32)
-            phase = np.angle(csi).astype(np.float32)
-        else:
-            amp, phase = None, None
 
         if self.return_bvp:
             bvp = self._load_bvp_file(data_record[f"bvp_paths_{csi_index}"])
@@ -257,6 +247,13 @@ class WidarDataset(Dataset):
         info["gesture"] = data_record["gesture"]
 
         if self.return_csi:
+            csi_files = [self._load_csi_file(fp)
+                         for fp in csi_fps]
+            csi = self._stack_csi_arrays(csi_files)
+            # csi = csi.copy()  # reset strides
+            amp = np.absolute(csi).astype(np.float32)
+            phase = np.angle(csi).astype(np.float32)
+
             amp = self.amp_pipeline(amp)
             phase = self.phase_pipeline(phase)
 
@@ -265,6 +262,9 @@ class WidarDataset(Dataset):
                 amp = amp.to(torch.float32)
             if isinstance(phase, torch.Tensor):
                 phase = phase.to(torch.float32)
+
+        else:
+            amp, phase = None, None
 
         return amp, phase, bvp, info
 
@@ -276,7 +276,6 @@ if __name__ == '__main__':
     p.add_argument("FP", type=Path,
                    help="Path to the data root.")
     args = p.parse_args()
-    d1 = WidarDataset(args.FP, "train", dataset_type="small",
-                      downsample_multiplier=2, bvp_agg="stack")
+    d1 = WidarDataset(args.FP, "train", dataset_type="small", bvp_agg="stack")
     print(d1[0])
     breakpoint()

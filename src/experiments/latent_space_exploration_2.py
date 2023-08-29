@@ -66,28 +66,22 @@ def main(checkpoint_fp: Path, config_fp: Path, data_dir_fp: Path):
 
     # SECTION Data
     bvp_pipeline = config["data"]["bvp_pipeline"]
-    train_dataset = WidarDataset(
-        data_dir_fp,
-        "train",
-        config["data"]["dataset_type"],
-        downsample_multiplier=config["data"]["downsample_multiplier"],
-        amp_pipeline=config["data"]["amp_pipeline"],
-        phase_pipeline=config["data"]["phase_pipeline"],
-        return_csi=not bvp_pipeline,
-        return_bvp=True,
-        bvp_agg=config["data"]["bvp_agg"]
-    )
-    valid_dataset = WidarDataset(
-        data_dir_fp,
-        "validation",
-        config["data"]["dataset_type"],
-        downsample_multiplier=config["data"]["downsample_multiplier"],
-        amp_pipeline=config["data"]["amp_pipeline"],
-        phase_pipeline=config["data"]["phase_pipeline"],
-        return_csi=not bvp_pipeline,
-        return_bvp=True,
-        bvp_agg=config["data"]["bvp_agg"]
-    )
+    train_dataset = WidarDataset(data_dir_fp, "train",
+                                 config["data"]["dataset_type"],
+                                 return_bvp=True,
+                                 bvp_agg=config["data"]["bvp_agg"],
+                                 return_csi=not bvp_pipeline,
+                                 amp_pipeline=config["data"]["amp_pipeline"],
+                                 phase_pipeline=config["data"][
+                                     "phase_pipeline"])
+    valid_dataset = WidarDataset(data_dir_fp, "validation",
+                                 config["data"]["dataset_type"],
+                                 return_bvp=True,
+                                 bvp_agg=config["data"]["bvp_agg"],
+                                 return_csi=not bvp_pipeline,
+                                 amp_pipeline=config["data"]["amp_pipeline"],
+                                 phase_pipeline=config["data"][
+                                     "phase_pipeline"])
 
     # SECTION Model
     encoder, _, _, embed_agent = build_model(config, train_dataset)

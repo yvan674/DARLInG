@@ -26,8 +26,8 @@ def parse_args():
 
 def calculate_mean_std(data_dir: Path, out_fp: Path):
     """Calculates the mean and std."""
-    dataset = WidarDataset(data_dir, "train", return_bvp=False,
-                           dataset_type="full",
+    dataset = WidarDataset(data_dir, "train", dataset_type="full",
+                           return_bvp=False,
                            amp_pipeline=Pipeline([lambda x: x]),
                            phase_pipeline=Pipeline([PhaseUnwrap()]))
 

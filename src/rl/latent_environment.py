@@ -3,6 +3,7 @@
 The gym environment wrapper for the latent space.
 """
 import gymnasium as gym
+import numpy as np
 import torch
 import torch.nn as nn
 from torch.utils.data import Dataset
@@ -39,11 +40,18 @@ class LatentEnvironment(gym.Env):
 
         self.current_step = 0
 
-        self.observation_space = spaces.Box(
-            low=0.0,
-            high=1.0,
-            shape=[self.encoder.latent_dim]
-        )
+        if bvp_pipeline:
+            self.observation_space = spaces.Box(
+                low=0.0,
+                high=1.0,
+                shape=[self.encoder.latent_dim]
+            )
+        else:
+            self.observation_space = spaces.Box(
+                low=0.0,
+                high=1.0,
+                shape=[2, self.encoder.latent_dim]
+            )
 
         self.action_space = spaces.Box(
             low=0.0,
@@ -58,7 +66,7 @@ class LatentEnvironment(gym.Env):
             bvp = bvp.to(self.device).unsqueeze(0)
         else:
             amp = amp.to(self.device).unsqueeze(0)
-            phase = phase.to(self.device)
+            phase = phase.to(self.device).unsqueeze(0)
             bvp = bvp.to(self.device).unsqueeze(0)
         with torch.no_grad():
             z, _, _ = self.encoder(amp, phase, bvp)
@@ -83,13 +91,17 @@ class LatentEnvironment(gym.Env):
             curr = self.current_step
             terminated = False
 
+        if isinstance(action, np.ndarray):
+            action = torch.tensor(action)
+
         reward = self.reward_function(self.null_head,
                                       self.embed_head,
                                       self.null_agent,
                                       self.last_z,
                                       self.last_obs,
                                       self.last_info,
-                                      action)
+                                      action,
+                                      self.device)
         # Gets the next observation
         self._set_obs(curr)
         self.current_step += 1
