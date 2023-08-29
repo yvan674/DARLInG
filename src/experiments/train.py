@@ -387,7 +387,8 @@ class Training:
 
         log_dict.update(**self._visualize_and_set_images(bvp,
                                                          bvp_null,
-                                                         bvp_embed, "valid"))
+                                                         bvp_embed,
+                                                         "valid"))
 
         self.logging.log(log_dict, step=self.step)
 

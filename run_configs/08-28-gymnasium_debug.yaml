@@ -8,11 +8,11 @@ data:
   phase_pipeline: null
   transformation: null
 debug:
-  is_debug: true
+  is_debug: false
   offline: false
   on_cpu: false
 embed:
-  agent_type: ppo
+  agent_type: ddpg
   reward_function: contrastive
   start_epoch: 5
   value_type: probability-measure
