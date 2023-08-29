@@ -9,10 +9,10 @@ data:
   transformation: null
 debug:
   is_debug: true
-  offline: true
+  offline: false
   on_cpu: false
 embed:
-  agent_type: ddpg
+  agent_type: ppo
   reward_function: contrastive
   start_epoch: 5
   value_type: probability-measure
@@ -36,5 +36,5 @@ optim_loss:
 train:
   batch_size: 16
   checkpoint_dir: ../../checkpoints
-  epochs: 10
+  epochs: 25
   ui: tqdm
