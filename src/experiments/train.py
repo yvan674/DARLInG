@@ -539,11 +539,13 @@ class Training:
                     self.embedding_agent = DDPG("MlpPolicy",
                                                 self.env,
                                                 action_noise=action_noise,
-                                                device=device)
+                                                device=device,
+                                                verbose=1)
                 elif self.embedding_agent == "ppo":
                     self.embedding_agent = PPO("MlpPolicy",
                                                self.env,
-                                               device=device)
+                                               device=device,
+                                               verbose=1)
                     total_agent_timesteps *= len(train_loader.dataset)
 
             # Train the embedding agent if desired
