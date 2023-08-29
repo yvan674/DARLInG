@@ -94,4 +94,5 @@ class LatentEnvironment(gym.Env):
         # Gets the next observation
         self._set_obs(curr)
         self.current_step += 1
+
         return self.last_obs, reward, terminated, False, self.last_info
