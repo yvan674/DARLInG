@@ -8,8 +8,7 @@ import torch.nn as nn
 from torch.utils.data import Dataset
 from gymnasium import spaces
 
-
-from models.base_embedding_agent import BaseEmbeddingAgent
+from models.null_agent import NullAgent
 
 
 class LatentEnvironment(gym.Env):
@@ -19,7 +18,7 @@ class LatentEnvironment(gym.Env):
                  encoder: nn.Module,
                  null_head: nn.Module,
                  embed_head: nn.Module,
-                 null_agent: BaseEmbeddingAgent,
+                 null_agent: NullAgent,
                  bvp_pipeline: bool,
                  device: torch.device,
                  dataset: Dataset,

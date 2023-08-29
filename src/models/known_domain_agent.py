@@ -7,19 +7,16 @@ Authors:
 """
 import torch
 
-from models.base_embedding_agent import BaseEmbeddingAgent
 
-
-class KnownDomainAgent(BaseEmbeddingAgent):
+class KnownDomainAgent:
     def __init__(self, domain_embedding_size: int):
-        super().__init__(domain_embedding_size=domain_embedding_size)
+        self.domain_embedding_size = domain_embedding_size
         self.device = None
 
     def __repr__(self):
         return "KnownDomainAgent()"
 
-    def _produce_action(self, observation: torch.Tensor,
-                        info: dict[str, list[any]], **kwargs) -> torch.Tensor:
+    def predict(self, info: dict[str, list[any]], **kwargs) -> torch.Tensor:
         """Produce an action based on the info dictionary.
 
         The info dictionary looks like:
@@ -54,18 +51,11 @@ class KnownDomainAgent(BaseEmbeddingAgent):
 
         return embedding
 
-    def process_reward(self, observation: torch.Tensor, reward: float):
+    def save(self, fp):
         pass
 
-    def train(self):
+    def learn(self, *args):
         pass
-
-    def eval(self):
-        pass
-
-    def state_dict(self):
-        return {"device": self.device,
-                "domain_embedding_size": self.domain_embedding_size}
 
     @staticmethod
     def load_state_dict(sd: dict[any]):

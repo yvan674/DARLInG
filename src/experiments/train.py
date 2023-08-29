@@ -22,9 +22,9 @@ from torchmetrics.classification import Accuracy, Precision, F1Score, \
 import wandb
 from wandb.wandb_run import Run
 
-from models.base_embedding_agent import BaseEmbeddingAgent
 from models.known_domain_agent import KnownDomainAgent
 from models.multi_task import run_heads
+from models.null_agent import NullAgent
 from loss.multi_joint_loss import MultiJointLoss
 from rl.latent_environment import LatentEnvironment
 from ui.base_ui import BaseUI
@@ -38,7 +38,7 @@ class Training:
                  encoder: nn.Module,
                  null_head: nn.Module,
                  embedding_agent: str,
-                 null_agent: BaseEmbeddingAgent,
+                 null_agent: NullAgent,
                  encoder_optimizer: Optimizer,
                  null_head_optimizer: Optimizer,
                  loss_func: MultiJointLoss,
@@ -76,7 +76,9 @@ class Training:
         self.encoder = encoder
         self.null_head = null_head
         self.embed_head = None
-        self.embedding_agent: str | BaseAlgorithm = embedding_agent
+        self.embedding_agent: str | BaseAlgorithm | KnownDomainAgent = (
+            embedding_agent
+        )
         self.null_agent = null_agent
         self.encoder_optimizer = encoder_optimizer
         self.null_head_optimizer = null_head_optimizer
@@ -146,11 +148,17 @@ class Training:
         # Generate domain embeddings
         null_embedding = self.null_agent(z, info)
         if self.embed_head is not None:
-            observation = z.detach().cpu()
-            action, _ = self.embedding_agent.predict(observation)
+            if isinstance(self.embedding_agent, BaseAlgorithm):
+                observation = z.detach().cpu()
+                action, _ = self.embedding_agent.predict(observation)
+                domain_embedding = torch.tensor(action, device=device,
+                                                dtype=torch.float32)
+            elif isinstance(self.embedding_agent, KnownDomainAgent):
+                action = self.embedding_agent.predict(info)
+                domain_embedding = action
+            else:
+                raise ValueError("How did we get here?")
             out_dict = {"agent_action": action}
-            domain_embedding = torch.tensor(action, device=device,
-                                            dtype=torch.float32)
         else:
             out_dict = {}
             domain_embedding = None
@@ -168,24 +176,6 @@ class Training:
                 null_embedding, domain_embedding, z
             )
 
-        # This is the old code
-        # if no_grad_agent:
-        #     with torch.no_grad():
-        #         action = self.embedding_agent(z, info)
-        # else:
-        #     action = self.embedding_agent(z, info)
-        #
-        # if isinstance(self.embedding_agent, PPOAgent):
-        #     domain_embedding = action[0]
-        #     out_dict = {"agent_action": action[0],
-        #                 "agent_action_log_prob": action[1],
-        #                 "agent_action_prob_entropy": action[2],
-        #                 "agent_critic_value": action[3]}
-        # else:
-        #     out_dict = {"agent_action": action}
-        #     domain_embedding = action
-
-        # Calculate losses
         loss_dict = self.loss_func(
             bvp, gesture,
             bvp_null, gesture_null,
@@ -298,157 +288,6 @@ class Training:
 
         return True
 
-    # def _train_agent(self, train_loader: DataLoader, device: torch.device,
-    #                  epoch: int, agent_epochs: int):
-    #     """Trains only the embedding agent."""
-    #     self.ui.update_status("Training embedding agent...")
-    #
-    #     # # DEBUG
-    #     # torch.autograd.set_detect_anomaly(True)
-    #
-    #     # SECTION Set value arrays
-    #     array_length = len(train_loader.dataset)
-    #     obs_shape = (array_length, self.encoder.encoder.latent_dim)
-    #     action_shape = (array_length,
-    #                     self.embedding_agent.domain_embedding_size)
-    #     obs = torch.zeros(obs_shape).to(device)
-    #     actions = torch.zeros(action_shape).to(device)
-    #     log_probs = torch.zeros((array_length,)).to(device)
-    #     rewards = torch.zeros((array_length,)).to(device)
-    #     values = torch.zeros((array_length,)).to(device)
-    #
-    #     # SECTION Run policy
-    #     for batch_idx, (amp, phase, bvp, info) in enumerate(train_loader):
-    #         start_time = perf_counter()
-    #         self.step += 1
-    #         current_batch_size = len(info["date"])
-    #         # Slice from previous "full" batch until current batch
-    #         batch_slice = slice(batch_idx * train_loader.batch_size,
-    #                             (batch_idx * train_loader.batch_size)
-    #                             + current_batch_size)
-    #
-    #         pass_result = self._forward_pass(amp, phase, bvp, info["gesture"],
-    #                                          info, device, no_grad_vae=True,
-    #                                          no_grad_agent=True)
-    #         # Update value arrays
-    #         obs[batch_slice] = pass_result["z"]
-    #         actions[batch_slice] = pass_result["agent_action"]
-    #         log_probs[batch_slice] = pass_result["agent_action_log_prob"]
-    #         loss_diff = (pass_result["embed_loss"]
-    #                      - pass_result["null_loss"])
-    #         rewards[batch_slice] = loss_diff
-    #         values[batch_slice] = pass_result["agent_critic_value"].flatten()
-    #         loss_diff = loss_diff.mean().item()
-    #
-    #         log_dict = {"train_loss_diff": loss_diff}
-    #         current_time = perf_counter()
-    #         self.logging.log(log_dict, self.step)
-    #         self.ui.update_data({
-    #             "loss_diff": loss_diff,
-    #             "rate": len(info["user"]) / (current_time - start_time),
-    #             "epoch": epoch
-    #         })
-    #         self.ui.step(len(info["user"]))
-    #
-    #     # SECTION Compute advantage estimates
-    #     self.ui.update_status("Computing advantage estimates...")
-    #     with torch.no_grad():
-    #         advantages = torch.zeros_like(rewards).to(device)
-    #         last_gae_lambda = 0.
-    #         gamma = self.embedding_agent.gamma
-    #         gae_lambda = self.embedding_agent.gae_lambda
-    #         for t in range(array_length - 1, -1, -1):
-    #             # Note: We have no terminal states, so next_non_terminal is
-    #             # always 1. We comment it out since it's a multiplier
-    #             # e.g. next_nonterminal * next_value * gamma, so is irrelevant
-    #             # next_nonterminal = 1.
-    #             next_value = values[t]
-    #             delta = (rewards[t - 1]
-    #                      - values[t - 1]
-    #                      + (gamma * next_value))
-    #             advantages[t - 1] = last_gae_lambda = (
-    #                     delta + (gamma * gae_lambda * last_gae_lambda)
-    #             )
-    #         returns = advantages + values
-    #
-    #     # SECTION Update policy and value function
-    #     self.ui.update_status("Updating agent policy and value functions...")
-    #     # We use indices here since we want to shuffle it at every epoch.
-    #     indices = np.arange(array_length)
-    #     clip_fracs = []
-    #     for agent_epoch in range(agent_epochs):
-    #         np.random.shuffle(indices)
-    #         steps_completed = 0
-    #         self.step += 1
-    #         for start in range(0, array_length, train_loader.batch_size):
-    #             end = min(start + train_loader.batch_size, array_length)
-    #             # mb stands for minibatch
-    #             mb_slice = indices[start:end]
-    #
-    #             _, new_log_prob, entropy, new_value = self.embedding_agent(
-    #                 observation=obs[mb_slice],
-    #                 action=actions[mb_slice]
-    #             )
-    #             log_ratio = new_log_prob - log_probs[mb_slice]
-    #             ratio = log_ratio.exp()
-    #
-    #             clip_coef = self.embedding_agent.clip_coef
-    #
-    #             # Calculate approximate KL
-    #             # <http://joschu.net/blog/kl-approx.html>
-    #             with torch.no_grad():
-    #                 # old_approx_kl = (-log_ratio).mean()
-    #                 approx_kl = ((ratio - 1.) - log_ratio).mean()
-    #                 should_clip = (ratio - 1.0).abs() > clip_coef
-    #                 clip_fracs += [should_clip.float().mean().item()]
-    #
-    #             mb_advantages = advantages[mb_slice]
-    #
-    #             if self.embedding_agent.norm_advantage:
-    #                 mb_mean = mb_advantages.mean()
-    #                 mb_std = mb_advantages.std()
-    #                 mb_advantages -= mb_mean
-    #                 mb_advantages /= mb_std + 1e-8
-    #
-    #             pg_loss_1 = -mb_advantages * ratio
-    #             pg_loss_2 = -mb_advantages * torch.clamp(ratio,
-    #                                                      1 - clip_coef,
-    #                                                      1 + clip_coef)
-    #             pg_loss = torch.max(pg_loss_1, pg_loss_2).mean()
-    #
-    #             new_value = new_value.flatten()
-    #
-    #             if self.embedding_agent.clip_value_loss:
-    #                 v_loss_unclipped = (new_value - returns[mb_slice]) ** 2
-    #                 v_clipped = values[mb_slice] + torch.clamp(
-    #                     new_value - values[mb_slice],
-    #                     -clip_coef,
-    #                     clip_coef
-    #                 )
-    #                 v_loss_clipped = (v_clipped - returns[mb_slice]) ** 2
-    #                 v_loss_max = torch.max(v_loss_unclipped, v_loss_clipped)
-    #                 v_loss = 0.5 * v_loss_max.mean()
-    #             else:
-    #                 v_loss = 0.5 * ((new_value - returns[mb_slice]) ** 2).mean()
-    #
-    #             entropy_loss = entropy.mean()
-    #
-    #             loss = (pg_loss
-    #                     - (self.embedding_agent.entropy_coef * entropy_loss)
-    #                     + (self.embedding_agent.value_func_coef * v_loss))
-    #
-    #             self.embedding_agent.optimizer.zero_grad()
-    #             loss.backward()
-    #             nn.utils.clip_grad_norm_(self.embedding_agent.ppo.parameters(),
-    #                                      self.embedding_agent.max_grad_norm)
-    #             self.embedding_agent.optimizer.step()
-    #             # TODO Actual logging of losses etc.
-    #         steps_completed += train_loader.batch_size
-    #         self.ui.step(train_loader.batch_size)
-    #
-    #         if self.embedding_agent.target_kl is not None:
-    #             if approx_kl > self.embedding_agent.target_kl:
-    #                 self.ui.step(len(train_loader) - steps_completed)
 
     def _validate_holistic(self, valid_loader: DataLoader, device,
                            epoch: int) -> float:
@@ -657,7 +496,6 @@ class Training:
         # Ensure that the models are on the right devices
         self.encoder.to(device)
         self.null_head.to(device)
-        # self.embedding_agent.to(device)
 
         total_agent_timesteps = agent_epochs
 
@@ -691,6 +529,7 @@ class Training:
                     self.embedding_agent = KnownDomainAgent(
                         self.embed_head.domain_label_size
                     )
+                    self.embedding_agent.to(device)
                 elif self.embedding_agent == "ddpg":
                     n_actions = self.env.action_space.shape[-1]
                     action_noise = NormalActionNoise(
