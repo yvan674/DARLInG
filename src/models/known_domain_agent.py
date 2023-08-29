@@ -57,9 +57,5 @@ class KnownDomainAgent:
     def learn(self, *args):
         pass
 
-    @staticmethod
-    def load_state_dict(sd: dict[any]):
-        return KnownDomainAgent(sd["domain_embedding_size"]).to(sd["device"])
-
     def to(self, device: int | torch.device | None):
         self.device = device
