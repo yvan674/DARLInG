@@ -41,9 +41,6 @@ def contrastive_reward(null_head: MultiTaskHead,
     """Gets a reward which is the CE difference between the two heads."""
     null_embedding = null_agent(z, info)
 
-    # Prepare action
-    if len(action.shape) == 1:
-        action = torch.unsqueeze(action, 0).to(device)
     with torch.no_grad():
         _, gesture_null, _, gesture_embed = run_heads(
             null_head, embed_head, null_embedding, action, z
@@ -82,11 +79,7 @@ def maximize_difference(null_head: MultiTaskHead,
     """
 
     # Prepare action
-    if len(action.shape) == 1:
-        action_softmax = F.softmax(action, dim=0)
-        action = torch.unsqueeze(action, 0).to(device)
-    else:
-        action_softmax = F.softmax(action, dim=1).flatten()
+    action_softmax = F.softmax(action, dim=1).flatten()
 
     # Calculate the difference between each combination of dimensions of the
     # action

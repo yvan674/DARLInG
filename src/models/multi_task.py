@@ -149,12 +149,20 @@ def run_heads(null_head: MultiTaskHead,
               z: torch.Tensor):
     """Runs both heads together.
 
+    Args:
+        null_head: The multitask head for the null embedding
+        embed_head: The multitask head for the agent embedding
+        null_embedding: The null embedding. Must be shape
+            [batch_size, domain_embedding_dim].
+        agent_embedding: The actual embedding. Must be shape
+            [batch_size, domain_embedding_dim].
+        z: The z value produced by the encoder. Must be in the shape
+            [batch_size, latent_embedding_dim].
+
     Returns:
         bvp_null, gesture_null, bvp_embed, gesture_embed. Embed values are
         None if the embed_head is None.
     """
-    if len(z.shape) > 1:
-        z = z.flatten().unsqueeze(0)
     bvp_null, gesture_null = null_head(
         torch.cat([z, null_embedding], dim=1)
     )

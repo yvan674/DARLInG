@@ -16,7 +16,7 @@ class KnownDomainAgent:
     def __repr__(self):
         return "KnownDomainAgent()"
 
-    def predict(self, info: dict[str, list[any]], **kwargs) -> torch.Tensor:
+    def predict(self, info: dict[str, any], **kwargs) -> torch.Tensor:
         """Produce an action based on the info dictionary.
 
         The info dictionary looks like:

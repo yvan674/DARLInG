@@ -41,9 +41,24 @@ class AmpPhaseEncoder(nn.Module):
         z_amp, mu_amp, log_sigma_amp = self.amp_encoder(amp)
         z_phase, mu_phase, log_sigma_phase = self.phase_encoder(phase)
 
-        return (torch.cat((z_amp, z_phase)),
-                torch.cat((mu_amp, mu_phase)),
-                torch.cat((log_sigma_amp, log_sigma_phase)))
+        z_amp = z_amp.unsqueeze(1)
+        mu_amp = mu_amp.unsqueeze(1)
+        log_sigma_amp = log_sigma_amp.unsqueeze(1)
+        z_phase = z_phase.unsqueeze(1)
+        mu_phase = mu_phase.unsqueeze(1)
+        log_sigma_phase = log_sigma_phase.unsqueeze(1)
+
+        z = torch.cat((z_amp, z_phase), dim=2).reshape(
+            -1, self.latent_dim * 2
+        )
+        mu = torch.cat((mu_amp, mu_phase), dim=2).reshape(
+            -1, self.latent_dim * 2
+        )
+        log_sigma = torch.cat((log_sigma_amp, log_sigma_phase), dim=2).reshape(
+            -1, self.latent_dim * 2
+        )
+
+        return z, mu, log_sigma
 
 
 class BVPEncoder(nn.Module):

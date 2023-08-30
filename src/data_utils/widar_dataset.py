@@ -3,6 +3,7 @@
 Loads both BVP and CSI information from the Widar3.0 Dataset.
 """
 import pickle
+import warnings
 from pathlib import Path
 from time import perf_counter
 from typing import List, Optional
@@ -21,11 +22,12 @@ class WidarDataset(Dataset):
     csi_length = 2000  # Tha max lengths we want to use.
 
     def __init__(self, root_path: Path, split_name: str, dataset_type: str,
-                 downsample_multiplier: int = 1, return_bvp: bool = True,
+                 return_bvp: bool = True,
                  bvp_agg: Optional[str] = None,
                  return_csi: bool = True,
                  amp_pipeline: Pipeline = Pipeline([torch.from_numpy]),
-                 phase_pipeline: Pipeline = Pipeline([torch.from_numpy])):
+                 phase_pipeline: Pipeline = Pipeline([torch.from_numpy]),
+                 pregenerated: bool | None = None):
         """Torch dataset class for Widar3.0.
 
         Returned values are 4-tuples containing CSI amplitude, CSI phase,
@@ -67,8 +69,6 @@ class WidarDataset(Dataset):
                 [`train`, `validation`, `test_room`, `test_location`, `test`]
             dataset_type: Type of the dataset. Options are [`small`,
                 `single_domain`, `full`].
-            downsample_multiplier: If downsampling is desired, the multiplier
-                for downsampling (e.g., 2 means only keep every other sample)
             return_bvp: Whether the BVP should be returned. If False,
                 then None is provided as the BVP value. Should make it a lot
                 faster to load samples if no BVP is necessary.
@@ -79,6 +79,9 @@ class WidarDataset(Dataset):
                 values.
             amp_pipeline: Pipeline to transform the amplitude shift signal with.
             phase_pipeline: Pipeline to transform the phase shift signal with.
+            pregenerated: Whether to use pregenerated CSIs. If None, then
+                checks first to see if pregenerated data exists. Useful for
+                forcing non-pregenerated CSIs.
         """
         print(f"Loading dataset {split_name}")
         start_time = perf_counter()
@@ -106,6 +109,8 @@ class WidarDataset(Dataset):
         self.amp_pipeline = amp_pipeline
         self.phase_pipeline = phase_pipeline
 
+        self.pregenerated = False
+
         if dataset_type not in ("small", "single_domain", "single_user",
                                 "full", "single_domain_small",
                                 "single_user_small"):
@@ -115,6 +120,21 @@ class WidarDataset(Dataset):
         if dataset_type == "full":
             index_fp = self.data_path / f"{split_name}_index.pkl"
         else:
+            # Check for pregenerated
+            self.pregen_dir = root_path / f"pregenerated_{dataset_type}"
+            if pregenerated is None:
+                self.pregenerated = self.pregen_dir.exists()
+                if self.pregenerated:
+                    print("Found pregenerated data dir. Using pregenerated "
+                          "data.")
+            else:
+                if pregenerated:
+                    print("Forcing pregenerated data.")
+                else:
+                    print("Forcing non-pregenerated data.")
+                self.pregenerated = pregenerated
+            self.pregen_dir /= split_name
+
             data_dir = root_path / f"widar_{dataset_type}"
             index_fp = data_dir / f"{split_name}_index_{dataset_type}.pkl"
             self.data_path = data_dir / split_name
@@ -247,15 +267,21 @@ class WidarDataset(Dataset):
         info["gesture"] = data_record["gesture"]
 
         if self.return_csi:
-            csi_files = [self._load_csi_file(fp)
-                         for fp in csi_fps]
-            csi = self._stack_csi_arrays(csi_files)
-            # csi = csi.copy()  # reset strides
-            amp = np.absolute(csi).astype(np.float32)
-            phase = np.angle(csi).astype(np.float32)
+            if self.pregenerated:
+                file_name = csi_fps[0].name.split("-r")[0] + ".npz"
+                data = np.load(self.pregen_dir / file_name)
+                amp, phase = data["x_amp"], data["x_phase"]
+                amp, phase = torch.tensor(amp), torch.tensor(phase)
+            else:
+                csi_files = [self._load_csi_file(fp)
+                             for fp in csi_fps]
+                csi = self._stack_csi_arrays(csi_files)
+                # csi = csi.copy()  # reset strides
+                amp = np.absolute(csi).astype(np.float32)
+                phase = np.angle(csi).astype(np.float32)
 
-            amp = self.amp_pipeline(amp)
-            phase = self.phase_pipeline(phase)
+                amp = self.amp_pipeline(amp)
+                phase = self.phase_pipeline(phase)
 
             # convert it to float32
             if isinstance(amp, torch.Tensor):
@@ -276,6 +302,8 @@ if __name__ == '__main__':
     p.add_argument("FP", type=Path,
                    help="Path to the data root.")
     args = p.parse_args()
-    d1 = WidarDataset(args.FP, "train", dataset_type="small", bvp_agg="stack")
+    d1 = WidarDataset(args.FP, "train",
+                      dataset_type="single_user_small",
+                      return_bvp=False)
     print(d1[0])
     breakpoint()

@@ -23,7 +23,7 @@ import wandb
 from wandb.wandb_run import Run
 
 from models.known_domain_agent import KnownDomainAgent
-from models.multi_task import run_heads
+from models.multi_task import run_heads, MultiTaskHead
 from models.null_agent import NullAgent
 from loss.multi_joint_loss import MultiJointLoss
 from rl.latent_environment import LatentEnvironment
@@ -36,7 +36,7 @@ class Training:
     def __init__(self,
                  bvp_pipeline: bool,
                  encoder: nn.Module,
-                 null_head: nn.Module,
+                 null_head: MultiTaskHead,
                  embedding_agent: str,
                  null_agent: NullAgent,
                  encoder_optimizer: Optimizer,
@@ -117,10 +117,9 @@ class Training:
                       phase: torch.Tensor | None,
                       bvp: torch.Tensor,
                       gesture: torch.Tensor,
-                      info: list[dict[str, any]],
+                      info: dict[str, any],
                       device: torch.device,
-                      no_grad_vae: bool,
-                      no_grad_agent: bool) -> dict[str, torch.Tensor]:
+                      no_grad_vae: bool) -> dict[str, torch.Tensor]:
         """Runs a single forward pass of the entire network.
 
         Args:
@@ -214,8 +213,7 @@ class Training:
             self.step += 1
             pass_result = self._forward_pass(amp, phase, bvp, info["gesture"],
                                              info, device,
-                                             no_grad_vae=False,
-                                             no_grad_agent=True)
+                                             no_grad_vae=False)
 
             # Backward pass
             self.encoder_optimizer.zero_grad()
@@ -310,8 +308,7 @@ class Training:
 
         for batch_idx, (amp, phase, bvp, info) in enumerate(valid_loader):
             pass_result = self._forward_pass(amp, phase, bvp, info["gesture"],
-                                             info, device,
-                                             True, True)
+                                             info, device, True)
 
             # Extract data only from the losses
             elbo_loss_value = pass_result["elbo_loss"].item()

@@ -50,7 +50,7 @@ class LatentEnvironment(gym.Env):
             self.observation_space = spaces.Box(
                 low=0.0,
                 high=1.0,
-                shape=[2, self.encoder.latent_dim]
+                shape=[2 * self.encoder.latent_dim]
             )
 
         self.action_space = spaces.Box(
@@ -71,7 +71,7 @@ class LatentEnvironment(gym.Env):
         with torch.no_grad():
             z, _, _ = self.encoder(amp, phase, bvp)
 
-        self.last_z = z.detach()
+        self.last_z = z.detach().flatten().unsqueeze(0)
         self.last_obs = self.last_z.cpu()
         self.last_info = info
 
@@ -92,7 +92,9 @@ class LatentEnvironment(gym.Env):
             terminated = False
 
         if isinstance(action, np.ndarray):
-            action = torch.tensor(action)
+            action = torch.tensor(action).to(self.device)
+        if len(action.shape) == 1:
+            action = action.unsqueeze(0)
 
         reward = self.reward_function(self.null_head,
                                       self.embed_head,

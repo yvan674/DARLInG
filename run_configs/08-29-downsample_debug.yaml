@@ -26,7 +26,7 @@ debug:
 embed:
   agent_type: ddpg
   reward_function: maximize_difference
-  start_epoch: 0
+  start_epoch: 1
   value_type: probability-measure
   epochs: 1
 encoder:
