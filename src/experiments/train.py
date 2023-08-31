@@ -7,8 +7,6 @@ import math
 from pathlib import Path
 
 import numpy as np
-from time import perf_counter
-
 import matplotlib.pyplot as plt
 import torch
 import torch.nn as nn
