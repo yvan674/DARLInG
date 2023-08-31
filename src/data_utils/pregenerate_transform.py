@@ -10,6 +10,7 @@ import numpy as np
 from tqdm import tqdm
 
 from data_utils.widar_dataset import WidarDataset
+from signal_processing.pipeline import Pipeline
 from utils.config_parser import parse_config_file
 
 
@@ -20,8 +21,11 @@ def parse_args():
     return p.parse_args()
 
 
-def open_and_generate(config: dict[str, any], split: str,
-                      out_dir: Path):
+def open_and_generate(config: dict[str, any],
+                      split: str,
+                      out_dir: Path,
+                      amp_pipeline: Pipeline,
+                      phase_pipeline: Pipeline):
     """Opens a dataset, generates the appropriate transformation, and saves it.
 
     Args:
@@ -29,15 +33,11 @@ def open_and_generate(config: dict[str, any], split: str,
         split: Data split to handle.
         out_dir: The directory for where the pregenerated files should be
             generated in.
+        amp_pipeline: Pipeline to push through the amp CSI signal.
+        phase_pipeline: Pipeline to push through the phase CSI signal.
     """
     # Create the directory if it doesn't exist
     (out_dir / split).mkdir(exist_ok=True, parents=True)
-
-    # Remove the pytorch to tensor step
-    amp_pipeline = config["amp_pipeline"]
-    amp_pipeline.processors = amp_pipeline.processors[:-1]
-    phase_pipeline = config["phase_pipeline"]
-    phase_pipeline.processors = phase_pipeline.processors[:-1]
 
     dataset = WidarDataset(root_path=config["data_dir"], split_name=split,
                            dataset_type=config["dataset_type"],
@@ -80,12 +80,19 @@ def pregenerate_transforms(config_file: Path):
     else:
         pregenerated_dir.mkdir()
 
+    # Remove the pytorch to tensor step
+    amp_pipe = config["amp_pipeline"]
+    amp_pipe.processors = amp_pipe.processors[:-1]
+    phase_pipe = config["phase_pipeline"]
+    phase_pipe.processors = phase_pipe.processors[:-1]
+
     for split in ["train", "validation", "test"]:
         if config["dataset_type"] == "full":
             raise NotImplementedError("Full not yet implemented.")
         elif ((config["data_dir"] / ("widar_" + config["dataset_type"]) / split)
                 .exists()):
-            open_and_generate(config, split, pregenerated_dir)
+            open_and_generate(config, split, pregenerated_dir,
+                              amp_pipe, phase_pipe)
 
 
 if __name__ == '__main__':
