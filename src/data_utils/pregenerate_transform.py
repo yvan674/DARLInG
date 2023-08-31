@@ -74,6 +74,11 @@ def pregenerate_transforms(config_file: Path):
     pregenerated_dir = (config["data_dir"] /
                         f"pregenerated_{config['dataset_type']}")
 
+    data_dir = config["data_dir"] / ("widar_" + config["dataset_type"])
+
+    if not data_dir.exists():
+        raise FileNotFoundError(f"Data dir {data_dir} does not exist.")
+
     if pregenerated_dir.exists():
         # Delete all file recursively inside of this directory
         rmtree(pregenerated_dir)
@@ -86,11 +91,12 @@ def pregenerate_transforms(config_file: Path):
     phase_pipe = config["phase_pipeline"]
     phase_pipe.processors = phase_pipe.processors[:-1]
 
+
+
     for split in ["train", "validation", "test"]:
         if config["dataset_type"] == "full":
             raise NotImplementedError("Full not yet implemented.")
-        elif ((config["data_dir"] / ("widar_" + config["dataset_type"]) / split)
-                .exists()):
+        elif (data_dir / split).exists():
             open_and_generate(config, split, pregenerated_dir,
                               amp_pipe, phase_pipe)
 

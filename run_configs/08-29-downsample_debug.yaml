@@ -2,7 +2,7 @@ data:
   bvp_agg: sum
   bvp_pipeline: 0
   data_dir: ../../data
-  dataset_type: single_domain
+  dataset_type: single_user_small
   downsample_multiplier: 100
   amp_pipeline:
     - "lowpass_filter"
@@ -24,11 +24,11 @@ debug:
   offline: true
   on_cpu: true
 embed:
-  agent_type: ddpg
+  agent_type: known
   reward_function: maximize_difference
   start_epoch: 0
-  value_type: probability-measure
-  epochs: 1
+  value_type: known
+  epochs: 15
 encoder:
   activation_fn: leaky
   dropout: 0.18
@@ -49,5 +49,5 @@ optim_loss:
 train:
   batch_size: 4
   checkpoint_dir: ../../checkpoints
-  epochs: 25
+  epochs: 50
   ui: tqdm
