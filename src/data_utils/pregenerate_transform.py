@@ -91,8 +91,6 @@ def pregenerate_transforms(config_file: Path):
     phase_pipe = config["phase_pipeline"]
     phase_pipe.processors = phase_pipe.processors[:-1]
 
-
-
     for split in ["train", "validation", "test"]:
         if config["dataset_type"] == "full":
             raise NotImplementedError("Full not yet implemented.")
