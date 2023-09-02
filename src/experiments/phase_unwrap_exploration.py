@@ -25,7 +25,6 @@ import random
 from tqdm import tqdm
 import numpy as np
 
-
 from signal_processing import plot_many_signals
 from signal_processing.lowpass_filter import LowPassFilter
 from signal_processing.phase_derivative import PhaseDerivative

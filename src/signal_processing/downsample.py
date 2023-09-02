@@ -36,6 +36,26 @@ class Downsample(SignalProcessor):
         return x[s]
 
 
+def interpolate_between_points(signal: np.ndarray,
+                               ds_multiplier: int) -> np.ndarray:
+    """Interpolates between downsampled points for plotting.
+
+    Spaces out filtered signals so that the length is also 2000 using linear
+    interpolation between data points.
+    """
+    interpolated = np.zeros(2000)
+    for i in range(signal.shape[0] - 1):
+        try:
+            interpolated[i * 100:(i + 1) * 100] = np.linspace(
+                signal[i, 0, 0], signal[i + 1, 0, 0],
+                100, endpoint=False
+            )
+        except IndexError:
+            interpolated[i * 100:] = np.repeat(signal[i, 0, 0],
+                                               100)
+    return interpolated
+
+
 if __name__ == '__main__':
     from signal_processing import plot_signals
     fs = 1000
@@ -52,21 +72,10 @@ if __name__ == '__main__':
 
     ds = Downsample(100)
     filtered_signal = ds(x)
-
-    # space out filtered signals so that the length is also 2000 using linear
-    # interpolation between data points
-    interpolated = np.zeros(2000)
-    for i in range(filtered_signal.shape[0] - 1):
-        print(f"{i=}, {(i+1)*100=}")
-        try:
-            interpolated[i*100:(i+1)*100] = np.linspace(
-                filtered_signal[i, 0, 0], filtered_signal[i+1, 0, 0],
-                100, endpoint=False
-            )
-        except IndexError:
-            interpolated[i*100:] = np.repeat(filtered_signal[i, 0, 0],
-                                             100)
+    interpolated_signal = interpolate_between_points(filtered_signal,
+                                                     100)
 
 
-    plot_signals(t, x[:, 0, 0], interpolated, "Downsample",
+
+    plot_signals(t, x[:, 0, 0], interpolated_signal, "Downsample",
                  "Original", "Downsampled")
