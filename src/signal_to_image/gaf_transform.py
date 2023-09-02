@@ -10,7 +10,7 @@ from signal_to_image.base import SignalToImageTransformer
 
 class GAF(SignalToImageTransformer):
     def __init__(self,
-                 image_size: int | float = 1.,
+                 image_size: int | float = 0.05,
                  normalize: bool = True,
                  method: str = "summation",
                  overlapping: bool = False,
@@ -20,7 +20,7 @@ class GAF(SignalToImageTransformer):
         self.gaf = GramianAngularField(image_size=image_size,
                                        method=method,
                                        overlapping=overlapping,
-                                       flatten=flatten)
+                                       flatten=flatten,)
 
     def __str__(self):
         return "GramianAngularField()"

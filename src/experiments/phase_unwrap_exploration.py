@@ -36,20 +36,21 @@ from data_utils import WidarDataset
 
 def explore_phases(root_path: Path):
     gesture_color_map = {
-        '0': '#1f77b4',
-        '1': '#ff7f0d',
-        '2': '#2ca02c',
-        '3': '#d62728',
-        '4': '#9467bd',
-        '5': '#8c564b',
-        '6': '#e377c2',
-        '7': '#7f7f7f',
-        '8': '#bcbd22',
-        '9': '#17becf',
+        0: '#1f77b4',
+        1: '#ff7f0d',
+        2: '#2ca02c',
+        3: '#d62728',
+        4: '#9467bd',
+        5: '#8c564b',
+        6: '#e377c2',
+        7: '#7f7f7f',
+        8: '#bcbd22',
+        9: '#17becf',
     }
 
-    data = WidarDataset(root_path, "train", True,
-                        return_bvp=False)
+    data = WidarDataset(root_path, "train",
+                        "single_user_small",
+                        return_bvp=False, pregenerated=False)
 
     sample_idxs = random.sample(range(len(data)), len(data) // 10)
 
@@ -58,11 +59,11 @@ def explore_phases(root_path: Path):
     labels = []
     colors = []
 
-    t_cutoff = 2048
+    t_cutoff = 2000
     t = np.arange(t_cutoff)
     pu = PhaseUnwrap()
     filt = PhaseFilter([3, 3, 1], [3, 3, 1])
-    lpf = LowPassFilter(250, 1000)
+    lpf = LowPassFilter(25, 1000)
     diff = PhaseDerivative()
 
     for idx in tqdm(sample_idxs):

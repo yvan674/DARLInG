@@ -25,8 +25,8 @@ class WidarDataset(Dataset):
                  return_bvp: bool = True,
                  bvp_agg: Optional[str] = None,
                  return_csi: bool = True,
-                 amp_pipeline: Pipeline = Pipeline([torch.from_numpy]),
-                 phase_pipeline: Pipeline = Pipeline([torch.from_numpy]),
+                 amp_pipeline: Pipeline | None = Pipeline([torch.from_numpy]),
+                 phase_pipeline: Pipeline | None = Pipeline([torch.from_numpy]),
                  pregenerated: bool | None = None):
         """Torch dataset class for Widar3.0.
 
@@ -78,7 +78,9 @@ class WidarDataset(Dataset):
                 If False, then None is provided as the amplitude and phase
                 values.
             amp_pipeline: Pipeline to transform the amplitude shift signal with.
+                If None, no transforms are applied.
             phase_pipeline: Pipeline to transform the phase shift signal with.
+                If None, non transforms are applied.
             pregenerated: Whether to use pregenerated CSIs. If None, then
                 checks first to see if pregenerated data exists. Useful for
                 forcing non-pregenerated CSIs.
@@ -106,6 +108,10 @@ class WidarDataset(Dataset):
                              "a BVP.")
         self.bvp_agg = bvp_agg
 
+        if amp_pipeline is None:
+            amp_pipeline = Pipeline([])
+        if phase_pipeline is None:
+            phase_pipeline = Pipeline([])
         self.amp_pipeline = amp_pipeline
         self.phase_pipeline = phase_pipeline
 
