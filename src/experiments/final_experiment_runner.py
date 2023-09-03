@@ -13,6 +13,7 @@ Author:
 """
 from pathlib import Path
 import os
+import warnings
 
 from data_utils.pregenerate_transform import pregenerate_transforms
 from experiments.train_runner import run_training
@@ -39,6 +40,7 @@ def main():
         raise ValueError("Unsupported system.")
 
     last_run_transform = None
+    failed_runs = []
 
     # Run each config file
     for config_file in config_files:
@@ -50,7 +52,22 @@ def main():
             pregenerate_transforms(config_file)
             last_run_transform = transform_name
 
-        run_training(parse_config_file(config_file))
+        # noinspection PyBroadException
+        try:
+            run_training(parse_config_file(config_file))
+        except:
+            # We catch ALL exceptions
+            warnings.warn(f"{config_file.name} Failed!")
+            failed_runs.append(config_file.name)
+    print("=================")
+    if len(failed_runs) > 0:
+        print("All runs attempted.")
+        print("Failed runs:")
+        for failed_run in failed_runs:
+            print(f"- {failed_run}")
+    else:
+        print("All runs completed!")
+
 
 
 if __name__ == "__main__":
