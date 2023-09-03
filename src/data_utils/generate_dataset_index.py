@@ -122,10 +122,10 @@ def create_glob_str(criteria: dict[str, any], user_id: str) -> str:
     if "face_orientation" in criteria:
         face_str = "".join(criteria["face_orientation"])
         glob_str = f"user{user_id}/user{user_id}-[{gesture_str}]" \
-                   f"-[{torso_str}]-[{face_str}]-?-*"
+                   f"-[{torso_str}]-[{face_str}]-[1234]-*"
     else:
         glob_str = f"user{user_id}/user{user_id}-[{gesture_str}]" \
-                   f"-[{torso_str}]-?-*"
+                   f"-[{torso_str}]-[12345]-[1234]-*"
 
     return glob_str
 
