@@ -46,6 +46,7 @@ def main():
         transform_name = config_file.name.split("_")[0]
         if transform_name != last_run_transform:
             # Do pregeneration of transform
+            print(f"Pregenerating transform {transform_name}...")
             pregenerate_transforms(config_file)
             last_run_transform = transform_name
 
