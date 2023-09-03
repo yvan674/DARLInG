@@ -175,18 +175,18 @@ def run_training(config: dict[str, dict[str, any]]):
     # SECTION Run training
     checkpoint_dir = config["train"]["checkpoint_dir"]
     training = Training(
-        bvp_pipeline,                                     # BVP Pipeline
-        encoder, null_head,                               # Models
-        embed_agent, null_agent,                          # Embed agents
-        encoder_optimizer, null_optimizer,                # Optimizers
-        loss_fn,                                          # Loss function
-        run, checkpoint_dir, ui,                          # Utils
-        optimizer_map[optimizer], lr,                     # Optimizer
-        reward_function,                                  # Reward function
-        agent_start_epoch=config["embed"]["start_epoch"]  # Embed config
+        bvp_pipeline,                                      # BVP Pipeline
+        encoder, null_head,                                # Models
+        embed_agent, null_agent,                           # Embed agents
+        encoder_optimizer, null_optimizer,                 # Optimizers
+        loss_fn,                                           # Loss function
+        run, checkpoint_dir, ui,                           # Utils
+        optimizer_map[optimizer], lr,                      # Optimizer
+        reward_function,                                   # Reward function
+        agent_start_epoch=config["embed"]["start_epoch"],  # Embed config
+        embed_value_type=config["embed"]["value_type"],    # Embed config
     )
     training.train(
-        train_embedding_agent=config["embed"]["value_type"] != "known",
         train_loader=train_dataloader,
         valid_loader=valid_dataloader,
         epochs=config["train"]["epochs"],

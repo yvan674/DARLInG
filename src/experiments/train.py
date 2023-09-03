@@ -10,6 +10,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 from stable_baselines3 import DDPG, PPO
 from stable_baselines3.common.base_class import BaseAlgorithm
 from stable_baselines3.common.noise import NormalActionNoise
@@ -47,7 +48,8 @@ class Training:
                  lr: float,
                  reward_function: callable,
                  num_classes: int = 6,
-                 agent_start_epoch: int = 0):
+                 agent_start_epoch: int = 0,
+                 embed_value_type: str = "known"):
         """Performs training on DARLInG.
 
         Args:
@@ -69,6 +71,8 @@ class Training:
             reward_function: The reward function to use.
             num_classes: The number of classes to predict
             agent_start_epoch: Which epoch to start training the agent.
+            embed_value_type: The type of embedding to provide. Options are:
+                [`known`, `probability-measure`, `one-hot`]
         """
         self.bvp_pipeline = bvp_pipeline
         self.encoder = encoder
@@ -90,6 +94,8 @@ class Training:
         self.reward_function = reward_function
         self.num_classes = num_classes
         self.agent_start_epoch = agent_start_epoch
+
+        self.embed_value_type = embed_value_type
 
         self.env = None
         self.valid_env = None
@@ -150,6 +156,13 @@ class Training:
                 action, _ = self.embedding_agent.predict(observation)
                 domain_embedding = torch.tensor(action, device=device,
                                                 dtype=torch.float32)
+                if self.embed_value_type == "probability-measure":
+                    domain_embedding = F.softmax(domain_embedding, dim=1)
+                elif self.embed_value_type == "one-hot":
+                    # Magic number threshold is 0.3
+                    domain_embedding = (domain_embedding > 0.3)\
+                        .to(torch.float32)
+
             elif isinstance(self.embedding_agent, KnownDomainAgent):
                 action = self.embedding_agent.predict(info)
                 domain_embedding = action
@@ -283,7 +296,6 @@ class Training:
                 return False
 
         return True
-
 
     def _validate_holistic(self, valid_loader: DataLoader, device,
                            epoch: int) -> float:
@@ -470,7 +482,6 @@ class Training:
             self.prev_checkpoint_fp = checkpoint_fp
 
     def train(self,
-              train_embedding_agent: bool,
               train_loader: DataLoader,
               valid_loader: DataLoader,
               epochs: int,
@@ -479,7 +490,6 @@ class Training:
         """Trains the model which was given in the initialization of the class.
 
         Args:
-            train_embedding_agent: Whether to train the embedding agent or not.
             train_loader: DataLoader containing the training data.
             valid_loader: DataLoader containing the validation data.
             epochs: Number of epochs to train for.
@@ -492,6 +502,8 @@ class Training:
         # Ensure that the models are on the right devices
         self.encoder.to(device)
         self.null_head.to(device)
+
+        train_embedding_agent = self.embedding_agent != "known"
 
         total_agent_timesteps = agent_epochs
 
