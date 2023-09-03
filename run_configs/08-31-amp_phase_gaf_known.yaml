@@ -23,7 +23,7 @@ debug:
   on_cpu: false
 embed:
   agent_type: ppo
-  reward_function: do_nothing
+  reward_function: maximize_difference
   start_epoch: 15
   value_type: probability-measure
   epochs: 2
