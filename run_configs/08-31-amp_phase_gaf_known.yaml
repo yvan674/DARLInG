@@ -2,12 +2,11 @@ data:
   bvp_agg: sum
   bvp_pipeline: 0
   data_dir: ../../data
-  dataset_type: single_user_small
+  dataset_type: single_user
   downsample_multiplier: 100
   amp_pipeline:
     - "lowpass_filter"
     - "standard_scalar"
-    - "downsample"
     - "transform"
     - "torch.from_numpy"
   phase_pipeline:
@@ -15,7 +14,6 @@ data:
     - "phase_filter"
     - "lowpass_filter"
     - "standard_scalar"
-    - "downsample"
     - "transform"
     - "torch.from_numpy"
   transformation: gaf
