@@ -41,15 +41,9 @@ def copy_files(widar_dir: Path, split_type: str):
         split_dir = widar_dir / f"widar_{split_type}" / split_name
         split_dir.mkdir(parents=True, exist_ok=True)
 
-        # Figure out num_reps
-        keys = list(samples[0].keys())
-        csi_path_keys = []
-        bvp_path_keys = []
-        for key in keys:
-            if key.startswith("csi_path"):
-                csi_path_keys.append(key)
-            elif key.startswith("bvp_path"):
-                bvp_path_keys.append(key)
+        # We'll assume max of 5 reps.
+        csi_path_keys = [f"csi_paths_{i}" for i in range(4)]
+        bvp_path_keys = [f"bvp_paths_{i}" for i in range(4)]
 
         for sample in tqdm(samples, desc=f"Copying files for {split_name}"):
             for csi_path_key in csi_path_keys:

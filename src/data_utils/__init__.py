@@ -87,14 +87,16 @@ TRAINING_SULO = {
     "user": {"3", "5", "6", "10", "11", "12"},
     "room_num": {1},
     "torso_location": {"1", "2", "3", "4", "5"},
-    "gesture": {"1"}
+    "gesture": {"1", "2", "3", "4", "5", "6"},
+    "face_orientation": {"1"}
 }
 
 VALIDATION_SULO = {
     "user": {"1"},
     "room_num": {1},
     "torso_location": {"1", "2", "3", "4", "5"},
-    "gesture": {"1"}
+    "gesture": {"1", "2", "3", "4", "5", "6"},
+    "face_orientation": {"1"}
 }
 
 
