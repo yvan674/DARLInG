@@ -1,0 +1,52 @@
+data:
+  bvp_agg: sum
+  bvp_pipeline: 0
+  data_dir: "F:\\Offline Docs\\Master Thesis\\data"
+  dataset_type: single_user
+  downsample_multiplier: 100
+  amp_pipeline:
+    - "lowpass_filter"
+    - "standard_scalar"
+    - "transform"
+    - "torch.from_numpy"
+  phase_pipeline:
+    - "phase_unwrap"
+    - "phase_filter"
+    - "lowpass_filter"
+    - "standard_scalar"
+    - "transform"
+    - "torch.from_numpy"
+  transformation: rp
+debug:
+  is_debug: false
+  offline: false
+  on_cpu: false
+embed:
+  agent_type: known
+  reward_function: do_nothing
+  start_epoch: 15
+  epochs: 1
+  value_type: known
+  embed_size: null
+encoder:
+  activation_fn: leaky
+  dropout: 0.18
+  initial_kernel_size: 7
+  latent_dim: 60
+  num_conv_layers: 3
+mt:
+  decoder_activation_fn: leaky
+  decoder_dropout: 0.26
+  predictor_activation_fn: selu
+  predictor_dropout: 0.28
+  predictor_num_layers: 4
+optim_loss:
+  alpha: 8.0e-05
+  beta: 0.5
+  lr: 0.00022
+  optimizer: adam
+train:
+  batch_size: 16
+  checkpoint_dir: ../../checkpoints
+  epochs: 50
+  ui: tqdm
