@@ -10,7 +10,7 @@ from signal_to_image.base import SignalToImageTransformer
 
 class GAF(SignalToImageTransformer):
     def __init__(self,
-                 image_size: int | float = 0.05,
+                 image_size: int | float = 0.02,
                  normalize: bool = True,
                  method: str = "summation",
                  overlapping: bool = False,
