@@ -22,7 +22,7 @@ debug:
   offline: false
   on_cpu: false
 embed:
-  agent_type: ppo
+  agent_type: ddpg
   reward_function: maximize_difference
   start_epoch: 15
   value_type: probability-measure
