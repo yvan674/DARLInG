@@ -20,6 +20,7 @@ from data_utils.dataloader_collate import widar_collate_fn
 from utils.config_parser import parse_config_file
 from experiments.train import Training
 from models.model_builder import build_model
+from loss.agent_reward import LossDiffReward
 from loss.multi_joint_loss import MultiJointLoss
 from ui.tqdm_ui import TqdmUI
 
@@ -142,6 +143,10 @@ def run_training(config: dict[str, dict[str, any]]):
 
     encoder_optimizer = optimizer_map[optimizer](encoder.parameters(), lr=lr)
     null_optimizer = optimizer_map[optimizer](null_head.parameters(), lr=lr)
+    embed_optimizer = optimizer_map[optimizer]
+
+    agent_reward_map = {"loss_diff": LossDiffReward}
+    agent_reward = agent_reward_map[config["embed"]["agent_reward"]]()
 
     # SECTION UI
     initial_data = {"train_loss": float("nan"),
@@ -174,13 +179,15 @@ def run_training(config: dict[str, dict[str, any]]):
     # SECTION Run training
     checkpoint_dir = config["train"]["checkpoint_dir"]
     training = Training(
-        bvp_pipeline,                                     # BVP Pipeline
-        encoder, null_head,                               # Models
-        embed_agent, null_agent,                          # Embed agents
-        encoder_optimizer, null_optimizer,                # Optimizers
-        loss_fn,                                          # Loss function
-        run, checkpoint_dir, ui,                          # Utils
-        agent_start_epoch=config["embed"]["start_epoch"]  # Embed config
+        bvp_pipeline,                                        # BVP Pipeline
+        encoder, null_head,                                  # Models
+        embed_agent, null_agent,                             # Embed agents
+        agent_reward,                                        # Reward function
+        encoder_optimizer, null_optimizer, embed_optimizer,  # Optimizers
+        lr,                                                  # Learning rate
+        loss_fn,                                             # Loss function
+        run, checkpoint_dir, ui,                             # Utils
+        agent_start_epoch=config["embed"]["start_epoch"]     # Embed config
     )
     training.train(
         train_embedding_agent=config["embed"]["value_type"] != "known",
