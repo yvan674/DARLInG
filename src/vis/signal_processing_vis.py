@@ -40,7 +40,7 @@ def visualize():
     t = np.arange(co)
 
     # Prep preprocessing steps
-    lpf = LowPassFilter(20, 1000)
+    lpf = LowPassFilter(250, 1000)
     ss_amp = StandardScaler(data_dir, "amp")
     ds = Downsample(100)
 
