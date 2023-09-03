@@ -183,6 +183,7 @@ def mt_config(decoder_dropout: float = 0.3,
 
 
 def embed_config(value_type: str = "known",
+                 agent_reward: str = "loss_diff",
                  embed_size: Optional[int] = None,
                  start_epoch: int = 0,
                  epochs: int = 1,
@@ -206,6 +207,8 @@ def embed_config(value_type: str = "known",
     Args:
         value_type: How to embed the agent. Options are
             [`known`, `one-hot`, `probability-measure`].
+        agent_reward: Reward function to use for the agent. Options are
+            [`loss_diff`].
         embed_size: Size of the embedding. None is only allowed if the
             embed_agent_value is `known` and is automatically replaced by 33.
         epochs: Number of epochs to train the embedding agent for.
@@ -233,6 +236,7 @@ def embed_config(value_type: str = "known",
     if embed_size is None:
         embed_size = 33
     return {"value_type": value_type,
+            "agent_reward": agent_reward,
             "embed_size": embed_size,
             "start_epoch": start_epoch,
             "epochs": epochs,

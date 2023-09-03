@@ -22,6 +22,7 @@ from wandb.wandb_run import Run
 from ui.base_ui import BaseUI
 from models.base_embedding_agent import BaseEmbeddingAgent
 from models.ppo_agent import PPOAgent
+from loss.agent_reward import BaseReward
 from loss.multi_joint_loss import MultiJointLoss
 from utils.colors import colorcet_to_image_palette
 from utils.images import tensor_to_image
@@ -34,8 +35,11 @@ class Training:
                  null_head: nn.Module,
                  embedding_agent: BaseEmbeddingAgent,
                  null_agent: BaseEmbeddingAgent,
+                 agent_reward: BaseReward,
                  encoder_optimizer: Optimizer,
                  null_head_optimizer: Optimizer,
+                 embed_head_optimizer: Optimizer,
+                 lr: float,
                  loss_func: MultiJointLoss,
                  logging: Run,
                  checkpoint_dir: Path,
@@ -52,8 +56,12 @@ class Training:
             null_head: The MT head which receives the null domain embedding.
             embedding_agent: The agent which performs the domain embedding.
             null_agent: The agent providing the null embedding.
+            agent_reward: The reward function for the agent.
             encoder_optimizer: Optimizer for the CNN encoder.
             null_head_optimizer: Optimizer for the null domain MT head.
+            embed_head_optimizer: Optimizer for the embedding agent. Must be an
+                uninitialized optimizer.
+            lr: The learning rate to use for the optimizer.
             loss_func: The ELBO classification loss object.
             logging: The logger to use for logging.
             checkpoint_dir: The directory to save checkpoints to.
@@ -66,9 +74,11 @@ class Training:
         self.embed_head = None
         self.embedding_agent = embedding_agent
         self.null_agent = null_agent
+        self.agent_reward = agent_reward
         self.encoder_optimizer = encoder_optimizer
         self.null_head_optimizer = null_head_optimizer
-        self.embed_head_optimizer = None
+        self.embed_head_optimizer = embed_head_optimizer
+        self.lr = lr
         self.loss_func = loss_func
         self.logging = logging
         self.checkpoint_dir = checkpoint_dir
@@ -199,12 +209,12 @@ class Training:
             # Backward pass
             self.encoder_optimizer.zero_grad()
             self.null_head_optimizer.zero_grad()
-            if self.embed_head_optimizer is not None:
+            if self.embed_head is not None:
                 self.embed_head_optimizer.zero_grad()
             pass_result["joint_loss"].backward()
             self.encoder_optimizer.step()
             self.null_head_optimizer.step()
-            if self.embed_head_optimizer is not None:
+            if self.embed_head is not None:
                 self.embed_head_optimizer.step()
 
             # Calculate metrics
@@ -218,7 +228,7 @@ class Training:
 
             if pass_result["embed_loss"] is not None:
                 embed_loss_value = pass_result["embed_loss"].item()
-                loss_diff = embed_loss_value - null_loss_value
+                loss_diff = null_loss_value - embed_loss_value
                 if np.isnan(embed_loss_value):
                     should_exit = True
             else:
@@ -292,7 +302,6 @@ class Training:
 
         # SECTION Run policy
         for batch_idx, (amp, phase, bvp, info) in enumerate(train_loader):
-            start_time = perf_counter()
             self.step += 1
             current_batch_size = len(info["date"])
             # Slice from previous "full" batch until current batch
@@ -307,18 +316,17 @@ class Training:
             obs[batch_slice] = pass_result["z"]
             actions[batch_slice] = pass_result["agent_action"]
             log_probs[batch_slice] = pass_result["agent_action_log_prob"]
-            loss_diff = (pass_result["embed_loss"]
-                         - pass_result["null_loss"])
-            rewards[batch_slice] = loss_diff
+            pass_reward = self.agent_reward.calculate_reward(
+                amp, phase, bvp, info, pass_result
+            )
+            rewards[batch_slice] = pass_reward
             values[batch_slice] = pass_result["agent_critic_value"].flatten()
-            loss_diff = loss_diff.mean().item()
+            pass_reward = pass_reward.mean().item()
 
-            log_dict = {"train_loss_diff": loss_diff}
-            current_time = perf_counter()
+            log_dict = {"train_agent_reward": pass_reward}
             self.logging.log(log_dict, self.step)
             self.ui.update_data({
-                "loss_diff": loss_diff,
-                "rate": len(info["user"]) / (current_time - start_time),
+                "agent_reward": pass_reward,
                 "epoch": epoch
             })
             self.ui.step(len(info["user"]))
@@ -450,11 +458,10 @@ class Training:
             # Extract data only from the losses
             elbo_loss_value = pass_result["elbo_loss"].item()
             null_loss_value = pass_result["null_loss"].item()
-            joint_loss_value = elbo_loss_value + null_loss_value
+            joint_loss_value = pass_result["joint_loss"].item()
             # Handle embed, since it may be None.
             if pass_result["embed_loss"] is not None:
                 embed_loss_value = pass_result["embed_loss"].item()
-                joint_loss_value += embed_loss_value
             else:
                 embed_loss_value = None
             # Add stuff to lists
@@ -636,8 +643,9 @@ class Training:
                                       "this epoch...")
                 self.embed_head = copy.deepcopy(self.null_head)
                 self.embed_head.to(device)
-                self.embed_head_optimizer = copy.deepcopy(
-                    self.null_head_optimizer
+                self.embed_head_optimizer = self.embed_head_optimizer(
+                    self.embed_head.parameters(),
+                    lr=self.lr
                 )
 
             # Train the VAE portion of the model
