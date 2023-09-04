@@ -13,6 +13,7 @@ Author:
 """
 from pathlib import Path
 import os
+import subprocess
 import warnings
 
 from data_utils.pregenerate_transform import pregenerate_transforms
@@ -54,7 +55,11 @@ def main():
 
         # noinspection PyBroadException
         try:
-            run_training(parse_config_file(config_file))
+            # Run training using subprocess
+            environ_vars = os.environ.copy()
+            training_fp = Path(__file__).parent / "train_runner.py"
+            subprocess.Popen(["python", str(training_fp), str(config_file)],
+                             env=environ_vars).wait()
         except:
             # We catch ALL exceptions
             warnings.warn(f"{config_file.name} Failed!")
