@@ -1,7 +1,7 @@
 data:
   bvp_agg: sum
   bvp_pipeline: 0
-  data_dir: ../../data
+  data_dir: "F:\\Offline Docs\\Master Thesis\\data"
   dataset_type: single_user
   downsample_multiplier: 100
   amp_pipeline:
@@ -16,7 +16,7 @@ data:
     - "standard_scalar"
     - "transform"
     - "torch.from_numpy"
-  transformation: gaf
+  transformation: mtf
 debug:
   is_debug: false
   offline: false
@@ -25,7 +25,7 @@ embed:
   agent_type: ppo
   reward_function: maximize_difference
   start_epoch: 15
-  value_type: probability-measure
+  value_type: one-hot
   epochs: 2
 encoder:
   activation_fn: leaky

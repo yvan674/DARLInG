@@ -1,7 +1,7 @@
 data:
   bvp_agg: sum
   bvp_pipeline: 0
-  data_dir: ../../data
+  data_dir: "F:\\Offline Docs\\Master Thesis\\data"
   dataset_type: single_user
   downsample_multiplier: 100
   amp_pipeline:

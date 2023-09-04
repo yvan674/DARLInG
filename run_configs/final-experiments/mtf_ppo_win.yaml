@@ -16,18 +16,17 @@ data:
     - "standard_scalar"
     - "transform"
     - "torch.from_numpy"
-  transformation: gaf
+  transformation: mtf
 debug:
   is_debug: false
   offline: false
   on_cpu: false
 embed:
-  agent_type: known
-  reward_function: do_nothing
+  agent_type: ppo
+  reward_function: maximize_difference
   start_epoch: 15
-  epochs: 1
-  value_type: known
-  embed_size: null
+  value_type: probability-measure
+  epochs: 2
 encoder:
   activation_fn: leaky
   dropout: 0.18
