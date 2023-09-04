@@ -183,15 +183,15 @@ def run_training(config: dict[str, dict[str, any]]):
         run, checkpoint_dir, ui,                           # Utils
         optimizer_map[optimizer], lr,                      # Optimizer
         reward_function,                                   # Reward function
-        agent_start_epoch=0,  # Embed config
+        agent_start_epoch=config["embed"]["start_epoch"],  # Embed config
         embed_value_type=config["embed"]["value_type"],    # Embed config
     )
     training.train(
         train_loader=train_dataloader,
         valid_loader=valid_dataloader,
-        epochs=1,
+        epochs=config["train"]["epochs"],
         device=device,
-        agent_epochs=1
+        agent_epochs=config["embed"]["epochs"]
     )
 
 
