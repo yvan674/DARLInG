@@ -89,9 +89,9 @@ def data_config(data_dir: str | Path = Path("../../data/"),
         case "gaf":
             transform = GAF()
         case "mtf":
-            transform = MTF()
+            transform = MTF(image_size=1.)
         case "rp":
-            transform = RP()
+            transform = RP(time_delay=1)
         case None:
             transform = None
         case _:
