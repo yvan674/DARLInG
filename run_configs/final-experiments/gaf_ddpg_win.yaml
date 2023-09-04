@@ -18,9 +18,9 @@ data:
     - "torch.from_numpy"
   transformation: gaf
 debug:
-  is_debug: true
-  offline: true
-  on_cpu: true
+  is_debug: false
+  offline: false
+  on_cpu: false
 embed:
   agent_type: ddpg
   reward_function: maximize_difference
