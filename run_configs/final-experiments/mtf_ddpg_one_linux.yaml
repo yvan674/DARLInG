@@ -48,6 +48,6 @@ optim_loss:
   optimizer: adam
 train:
   batch_size: 16
-  checkpoint_dir: ../../checkpoints
+  checkpoint_dir: ~/checkpoints
   epochs: 100
   ui: tqdm
