@@ -1,7 +1,7 @@
 data:
   bvp_agg: sum
   bvp_pipeline: 0
-  data_dir: ~/data
+  data_dir: /home/mcs001/20211957/data
   dataset_type: single_user
   downsample_multiplier: 50
   amp_pipeline:
@@ -48,6 +48,6 @@ optim_loss:
   optimizer: adam
 train:
   batch_size: 16
-  checkpoint_dir: ~/checkpoints
+  checkpoint_dir: /home/mcs001/20211957/checkpoints
   epochs: 100
   ui: tqdm
