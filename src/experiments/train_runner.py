@@ -71,12 +71,16 @@ def run_training(config: dict[str, dict[str, any]]):
     # Set device
     if config["debug"]["on_cpu"]:
         # Debugging on CPU is easier
+        print("Running training on CPU")
         device = torch.device("cpu")
     elif torch.cuda.is_available():
+        print("Running training on CUDA")
         device = torch.device("cuda")
     elif torch.backends.mps.is_available():
+        print("Running training on MPS")
         device = torch.device("mps")
     else:
+        print("Running training on CPU")
         device = torch.device("cpu")
 
     # SECTION Data
