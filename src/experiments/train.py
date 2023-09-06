@@ -11,9 +11,7 @@ import matplotlib.pyplot as plt
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from stable_baselines3 import DDPG, PPO
 from stable_baselines3.common.base_class import BaseAlgorithm
-from stable_baselines3.common.noise import NormalActionNoise
 from torch.optim import Optimizer
 from torch.utils.data import DataLoader
 from torchmetrics.classification import Accuracy, Precision, F1Score, \
@@ -25,7 +23,6 @@ from models.known_domain_agent import KnownDomainAgent
 from models.multi_task import run_heads, MultiTaskHead
 from models.null_agent import NullAgent
 from loss.multi_joint_loss import MultiJointLoss
-from rl.latent_environment import LatentEnvironment
 from rl.rl_builder import build_rl
 from ui.base_ui import BaseUI
 from utils.colors import colorcet_to_image_palette
