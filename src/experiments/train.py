@@ -26,6 +26,7 @@ from models.multi_task import run_heads, MultiTaskHead
 from models.null_agent import NullAgent
 from loss.multi_joint_loss import MultiJointLoss
 from rl.latent_environment import LatentEnvironment
+from rl.rl_builder import build_rl
 from ui.base_ui import BaseUI
 from utils.colors import colorcet_to_image_palette
 from utils.images import tensor_to_image
@@ -505,59 +506,28 @@ class Training:
 
         train_embedding_agent = self.embedding_agent != "known"
 
-        total_agent_timesteps = agent_epochs
+        total_agent_timesteps = 0
 
         for epoch in range(epochs):
-            # Check if we should start training the agent yet
-            if epoch == self.agent_start_epoch:
-                # Duplicate the null head to create the embedding head
-                self.ui.update_status("Training embedding agent starting "
-                                      "this epoch...")
-                self.embed_head = copy.deepcopy(self.null_head)
-                self.embed_head_optimizer = self.embed_head_optim_class(
-                    self.embed_head.parameters(),
-                    lr=self.lr
-                )
-                self.embed_head.to(device)
-
-                # Create the environment
-                self.env = LatentEnvironment(
-                    encoder=self.encoder,
-                    null_head=self.null_head,
-                    embed_head=self.embed_head,
-                    null_agent=self.null_agent,
-                    bvp_pipeline=self.bvp_pipeline,
-                    device=device,
-                    dataset=train_loader.dataset,
-                    reward_function=self.reward_function
-                )
-
-                # Set up the agent
-                if self.embedding_agent == "known":
-                    self.embedding_agent = KnownDomainAgent(
-                        self.embed_head.domain_label_size
-                    )
-                    self.embedding_agent.to(device)
-                elif self.embedding_agent == "ddpg":
-                    n_actions = self.env.action_space.shape[-1]
-                    action_noise = NormalActionNoise(
-                        mean=np.zeros(n_actions),
-                        sigma=np.full(n_actions, 0.1)
-                    )
-                    self.embedding_agent = DDPG("MlpPolicy",
-                                                self.env,
-                                                action_noise=action_noise,
-                                                device=device,
-                                                verbose=1)
-                elif self.embedding_agent == "ppo":
-                    self.embedding_agent = PPO("MlpPolicy",
-                                               self.env,
-                                               device=device,
-                                               verbose=1)
-                    total_agent_timesteps *= len(train_loader.dataset)
-
             # Train the embedding agent if desired
             if train_embedding_agent and epoch >= self.agent_start_epoch:
+                # Check if we should build the agent
+                if epoch == self.agent_start_epoch:
+                    # Duplicate the null head to create the embedding head
+                    self.ui.update_status("Training embedding agent starting "
+                                          "this epoch...")
+                    self.embed_head = copy.deepcopy(self.null_head)
+                    self.embed_head_optimizer = self.embed_head_optim_class(
+                        self.embed_head.parameters(),
+                        lr=self.lr
+                    )
+                    self.embed_head.to(device)
+                    rl = build_rl(self.encoder, self.null_head, self.embed_head,
+                                  self.null_agent, self.embedding_agent,
+                                  self.bvp_pipeline, device,
+                                  train_loader, self.reward_function,
+                                  agent_epochs)
+                    self.env, self.embedding_agent, total_agent_timesteps = rl
                 # Put VAE to eval mode
                 self.encoder.eval()
                 self.null_head.eval()

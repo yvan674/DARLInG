@@ -57,7 +57,7 @@ def build_model(config: dict[str, any],
     VAE based model.
 
     Returns:
-        The encoder, null head, embed head, null agent, and embed agent.
+        The encoder, null head, and null agent.
     """
     print("Building models...")
     start_time = perf_counter()
