@@ -26,9 +26,9 @@ debug:
 embed:
   agent_type: ddpg
   reward_function: maximize_difference
-  start_epoch: 15
+  start_epoch: 50
   value_type: one-hot
-  epochs: 20
+  epochs: 30
 encoder:
   activation_fn: leaky
   dropout: 0.18
@@ -49,5 +49,5 @@ optim_loss:
 train:
   batch_size: 16
   checkpoint_dir: /home/mcs001/20211957/checkpoints
-  epochs: 100
+  epochs: 200
   ui: tqdm
