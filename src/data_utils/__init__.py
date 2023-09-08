@@ -75,7 +75,7 @@ TEST_LOCATION_SELECTION = {
 }
 
 SINGLE_DOMAIN_SELECTION = {
-    "user": {"2"},
+    "user": {"1"},
     "room_num": {1},
     "torso_location": {"1"},
     "gesture": {"1", "2", "3", "4", "5", "6"},
