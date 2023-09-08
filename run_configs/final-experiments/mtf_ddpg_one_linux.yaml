@@ -28,7 +28,7 @@ embed:
   reward_function: maximize_difference
   start_epoch: 50
   value_type: one-hot
-  epochs: 30
+  epochs: 300
 encoder:
   activation_fn: leaky
   dropout: 0.18
@@ -47,7 +47,7 @@ optim_loss:
   lr: 0.00022
   optimizer: adam
 train:
-  batch_size: 16
+  batch_size: 32
   checkpoint_dir: /home/mcs001/20211957/checkpoints
-  epochs: 200
+  epochs: 100
   ui: tqdm
