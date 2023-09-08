@@ -26,9 +26,9 @@ debug:
 embed:
   agent_type: ddpg
   reward_function: maximize_difference
-  start_epoch: 50
+  start_epoch: 35
   value_type: one-hot
-  epochs: 300
+  epochs: 3000
 encoder:
   activation_fn: leaky
   dropout: 0.18
