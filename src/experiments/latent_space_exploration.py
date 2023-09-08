@@ -189,7 +189,7 @@ def main(checkpoint_fp: Path, agent_checkpoint_fp: Path,
             visualize_space(user_space, user_gesture.tolist(),
                             6,
                             space_name,
-                            f"t-SNE for user {user}",
+                            f"t-SNE for user {user} by gesture",
                             "Gesture")
 
 
