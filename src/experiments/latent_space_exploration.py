@@ -49,10 +49,10 @@ def forward_pass(encoder, embed_agent, amp, phase, bvp, bvp_pipeline, device):
 
 
 def visualize_space(space, colors, legend_ncols, space_name, plot_title,
-                    legend_title):
+                    legend_title=""):
     fig, ax = plt.subplots()
     # set dpi to 300 for high quality
-    fig.dpi = 300
+    fig.set_dpi(300)
     scatter = ax.scatter(space[:, 0], space[:, 1],
                          c=colors)
 
@@ -61,10 +61,15 @@ def visualize_space(space, colors, legend_ncols, space_name, plot_title,
     ax.set_position([box.x0, box.y0 + box.height * 0.15,
                      box.width, box.height * 0.85])
 
+    # Set both x and y axis min max to -35, 35
+    ax.set_xlim(-35, 35)
+    ax.set_ylim(-35, 35)
+
     # Put legend below the axis
-    ax.legend(*scatter.legend_elements(),
-              loc="upper center", bbox_to_anchor=(0.5, -0.05),
-              ncol=legend_ncols, title=legend_title)
+    if legend_ncols > 0:
+        ax.legend(*scatter.legend_elements(),
+                  loc="upper center", bbox_to_anchor=(0.5, -0.05),
+                  ncol=legend_ncols, title=legend_title)
     plt.title(f"{space_name} ({plot_title})")
     plt.savefig(f"../../figures/{space_name}_{plot_title}.png")
 
@@ -125,6 +130,7 @@ def main(checkpoint_fp: Path, agent_checkpoint_fp: Path,
     latent_space = []
     embed_space = []
     infos = []
+    users = set()
 
     for dataset, is_train in zip((train_dataset, valid_dataset),
                                  (True, False)):
@@ -137,12 +143,16 @@ def main(checkpoint_fp: Path, agent_checkpoint_fp: Path,
             info["is_train"] = is_train
             info["user"] += 1
             infos.append(info)
+            users.add(info["user"])
 
     latent_space = torch.cat(latent_space, dim=0).detach().cpu().numpy()
     embed_space = np.concatenate(embed_space, axis=0)
+    users = sorted(list(users))
 
 
     # SECTION Visualize spaces
+    users_list = [info["user"] for info in infos]
+    gesture_list = [info["gesture"] for info in infos]
     for space, space_name in tqdm(zip([latent_space, embed_space],
                                       ["Latent Space t-SNE",
                                        "Domain Embedding t-SNE"]),
@@ -150,19 +160,37 @@ def main(checkpoint_fp: Path, agent_checkpoint_fp: Path,
         tsne = TSNE(n_components=2, random_state=0)
         space = tsne.fit_transform(space)
 
-        # Color based on train/valid, showing legend
-        visualize_space(space, [info["is_train"] for info in infos],
-                        2, space_name,
-                        "Train vs. Validation set",
-                        "Is Train")
+        # # Color based on train/valid, showing legend
+        # visualize_space(space, [info["is_train"] for info in infos],
+        #                 2, space_name,
+        #                 "Train vs. Validation set",
+        #                 "Is Train")
 
-        visualize_space(space, [info["gesture"] for info in infos],
+        visualize_space(space, gesture_list,
                         6, space_name, "Gesture",
                         "Gesture")
 
-        visualize_space(space, [info["user"] for info in infos],
+        visualize_space(space, users_list,
                         6, space_name, "User",
                         "User")
+
+        # SECTION Visualize User Spaces
+        # we want here to visualize gesture by user for both the latent space
+        # and the domain embedding
+        # First prep data to visualize
+
+        users_list = np.array(users_list, dtype=int)
+        gesture_list = np.array(gesture_list)
+        for user in users:
+            user_filter = users_list == user
+            user_space = space[user_filter]
+            user_gesture = gesture_list[user_filter]
+
+            visualize_space(user_space, user_gesture.tolist(),
+                            6,
+                            space_name,
+                            f"t-SNE for user {user}",
+                            "Gesture")
 
 
 if __name__ == '__main__':
