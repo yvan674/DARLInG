@@ -48,4 +48,4 @@ train:
   batch_size: 16
   checkpoint_dir: ../../checkpoints
   epochs: 50
-  ui: tqdm
+  ui: cluster_ui

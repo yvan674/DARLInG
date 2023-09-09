@@ -27,12 +27,11 @@ class ClusterLoggerUI(BaseUI):
         timestamp = (f"[{local_time} E{self.current_epoch:03d} "
                      f"S{self.curr_step:07d}] ")
 
-        spaces = " " * len(timestamp)
-
         if "\n" in text:
-            text.replace("\n", spaces + "\n")
+            spaces = " " * len(timestamp)
+            text = text.replace("\n", "\n" + spaces)
 
-        print(f"{timestamp} {text}")
+        print(f"{timestamp}{text}")
 
     def update_status(self, status: str):
         """Updates the status by printing it to the console with a timestamp."""
