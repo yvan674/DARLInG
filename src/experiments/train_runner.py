@@ -23,6 +23,7 @@ from loss.multi_joint_loss import MultiJointLoss
 from models.model_builder import build_model
 from rl.reward_functions import func_from_str
 from ui.tqdm_ui import TqdmUI
+from ui.cluster_logger import ClusterLoggerUI
 
 
 def parse_args():
@@ -169,10 +170,13 @@ def run_training(config: dict[str, dict[str, any]]):
                         config["train"]["epochs"], initial_data)
         case "gui":
             raise NotImplementedError("GUI has not been implemented yet.")
+        case "cluster_ui":
+            ui = ClusterLoggerUI(train_steps, len(valid_dataset),
+                                 config["train"]["epochs"], initial_data)
         case _:
             raise ValueError(f"{config['train']['ui']} is not one of the "
                              f"available options."
-                             f"Available options are [`tqdm`, `gui`]")
+                             f"Available options are [`tqdm`, `cluster_ui`]")
 
     ui.update_status("Preparation complete. Starting training...")
 
