@@ -50,4 +50,4 @@ train:
   batch_size: 32
   checkpoint_dir: /home/mcs001/20211957/checkpoints
   epochs: 100
-  ui: tqdm
+  ui: cluster_ui
