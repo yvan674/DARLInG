@@ -143,8 +143,7 @@ def run_training(config: dict[str, dict[str, any]]):
     # Loss and optimizers
     optimizer = config["optim_loss"]["optimizer"]
     lr = config["optim_loss"]["lr"]
-    loss_fn = MultiJointLoss(config["optim_loss"]["alpha"],
-                             config["optim_loss"]["beta"])
+    loss_fn = MultiJointLoss(config["optim_loss"]["alpha"])
     optimizer_map = {"adam": Adam, "sgd": SGD}
 
     encoder_optimizer = optimizer_map[optimizer](encoder.parameters(), lr=lr)

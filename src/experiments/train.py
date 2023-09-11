@@ -238,8 +238,7 @@ class Training:
             # Calculate metrics
             elbo_loss_value = pass_result["elbo_loss"].item()
             null_loss_value = pass_result["null_loss"].item()
-            joint_loss_value = (elbo_loss_value
-                                + null_loss_value)
+            joint_loss_value = pass_result["joint_loss"].item()
             # Check if any loss values are nan
             should_exit = (np.isnan(elbo_loss_value)
                            or np.isnan(null_loss_value)
@@ -247,12 +246,11 @@ class Training:
 
             if pass_result["embed_loss"] is not None:
                 embed_loss_value = pass_result["embed_loss"].item()
-                joint_loss_value += embed_loss_value
                 loss_diff = embed_loss_value - null_loss_value
                 if np.isnan(embed_loss_value):
                     should_exit = True
             else:
-                loss_diff = 0.0
+                loss_diff = float("nan")
                 embed_loss_value = float("nan")
 
             loss_vals = {

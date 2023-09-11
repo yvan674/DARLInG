@@ -12,7 +12,7 @@ import torch.nn as nn
 
 
 class MultiJointLoss(nn.Module):
-    def __init__(self, alpha: float, beta: float):
+    def __init__(self, alpha: float):
         """Joint ELBO and Classification Loss for two heads.
 
         The ratio between reconstruction and classification is defined by
@@ -25,18 +25,13 @@ class MultiJointLoss(nn.Module):
             alpha: The ratio between reconstruction and classification loss.
                 The final loss is calculated as:
                 (alpha) * elbo + (1 - alpha) * class_loss.
-            beta: The ratio between null and embed head losses.
-                The final ratio is calculated as:
-                (beta) * null_loss, (1-beta) * embed_loss
         """
         super().__init__()
 
-        self.mse = nn.MSELoss(reduction='mean')
+        self.l1loss = nn.L1Loss(reduction='mean')
         self.ce = nn.CrossEntropyLoss()
         self.alpha = alpha
         self.neg_alpha = 1. - alpha
-        self.beta = beta
-        self.neg_beta = 1. - beta
         self.const_term = 0.5 * math.log(math.pi)
 
     @staticmethod
@@ -58,12 +53,10 @@ class MultiJointLoss(nn.Module):
         """Calculates ELBO loss based on Practical 5.2 of 2AMM10 Deep Learning.
         """
         # First calculate reconstruction loss
-        null_reconstr_loss = self.mse(target_img, null_img)
+        null_reconstr_loss = self.l1loss(target_img, null_img)
         if embed_img is not None:
-            embed_reconstr_loss = self.mse(target_img, embed_img)
-            reconstr_loss = self.proportional(null_reconstr_loss,
-                                              embed_reconstr_loss,
-                                              self.beta, self.neg_beta)
+            embed_reconstr_loss = self.l1loss(target_img, embed_img)
+            reconstr_loss = (null_reconstr_loss + embed_reconstr_loss) * 0.5
         else:
             embed_reconstr_loss = None
             reconstr_loss = null_reconstr_loss
@@ -82,15 +75,13 @@ class MultiJointLoss(nn.Module):
             elbo_loss = reconstr_loss + kl_loss
         else:
             embed_elbo_loss = None
-            elbo_loss = null_reconstr_loss
+            elbo_loss = null_elbo_loss
 
         # Cross entropy loss on labels
         null_class_loss = self.ce(null_label, target_label)
         if embed_label is not None:
             embed_class_loss = self.ce(embed_label, target_label)
-            class_loss = self.proportional(null_class_loss,
-                                           embed_class_loss,
-                                           self.beta, self.neg_beta)
+            class_loss = (null_class_loss + embed_class_loss) * 0.5
         else:
             embed_class_loss = None
             class_loss = null_class_loss
@@ -103,14 +94,10 @@ class MultiJointLoss(nn.Module):
             embed_joint_loss = self.proportional(embed_elbo_loss,
                                                  embed_class_loss,
                                                  self.alpha, self.neg_alpha)
-            joint_loss = self.proportional(elbo_loss,
-                                           class_loss,
-                                           self.alpha, self.neg_alpha)
+            joint_loss = (null_joint_loss + embed_joint_loss) * 0.5
         else:
             embed_joint_loss = None
             joint_loss = null_joint_loss
-
-
 
         return {"elbo_loss": elbo_loss,
                 "class_loss": class_loss,
