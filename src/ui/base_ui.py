@@ -24,8 +24,10 @@ class BaseUI(ABC):
         """
         self.train_steps = train_steps
         self.valid_steps = valid_steps
+        self.total_steps = (valid_steps + train_steps) * epochs
         self.epochs = epochs
         self.data_dict = initial_data
+        self.current_epoch = 1
 
     @abstractmethod
     def update_status(self, status: str):

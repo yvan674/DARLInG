@@ -19,9 +19,11 @@ from data_utils.widar_dataset import WidarDataset
 from data_utils.dataloader_collate import widar_collate_fn
 from utils.config_parser import parse_config_file
 from experiments.train import Training
-from models.model_builder import build_model
 from loss.multi_joint_loss import MultiJointLoss
+from models.model_builder import build_model
+from rl.reward_functions import func_from_str
 from ui.tqdm_ui import TqdmUI
+from ui.cluster_logger import ClusterLoggerUI
 
 
 def parse_args():
@@ -70,12 +72,16 @@ def run_training(config: dict[str, dict[str, any]]):
     # Set device
     if config["debug"]["on_cpu"]:
         # Debugging on CPU is easier
+        print("Running training on CPU")
         device = torch.device("cpu")
     elif torch.cuda.is_available():
+        print("Running training on CUDA")
         device = torch.device("cuda")
     elif torch.backends.mps.is_available():
+        print("Running training on MPS")
         device = torch.device("mps")
     else:
+        print("Running training on CPU")
         device = torch.device("cpu")
 
     # SECTION Data
@@ -88,7 +94,6 @@ def run_training(config: dict[str, dict[str, any]]):
         data_dir,
         "train",
         dataset_type,
-        downsample_multiplier=config["data"]["downsample_multiplier"],
         amp_pipeline=config["data"]["amp_pipeline"],
         phase_pipeline=config["data"]["phase_pipeline"],
         return_csi=not bvp_pipeline,
@@ -99,7 +104,6 @@ def run_training(config: dict[str, dict[str, any]]):
         data_dir,
         "validation",
         dataset_type,
-        downsample_multiplier=config["data"]["downsample_multiplier"],
         amp_pipeline=config["data"]["amp_pipeline"],
         phase_pipeline=config["data"]["phase_pipeline"],
         return_csi=not bvp_pipeline,
@@ -116,23 +120,25 @@ def run_training(config: dict[str, dict[str, any]]):
                                   config["train"]["batch_size"],
                                   num_workers=num_workers,
                                   collate_fn=widar_collate_fn,
+                                  drop_last=True,
                                   shuffle=True)
     valid_dataloader = DataLoader(valid_dataset,
                                   config["train"]["batch_size"],
                                   num_workers=num_workers,
-                                  collate_fn=widar_collate_fn)
+                                  collate_fn=widar_collate_fn,
+                                  drop_last=True)
 
     # SECTION Set up models
-    encoder, null_head, null_agent, embed_agent = build_model(
+    encoder, null_head, null_agent = build_model(
         config,
         train_dataset
     )
+    embed_agent = config["embed"]["agent_type"]
 
     # Move models to device
     encoder.to(device)
     null_head.to(device)
     null_agent.to(device)
-    embed_agent.to(device)
 
     # Loss and optimizers
     optimizer = config["optim_loss"]["optimizer"]
@@ -142,6 +148,9 @@ def run_training(config: dict[str, dict[str, any]]):
 
     encoder_optimizer = optimizer_map[optimizer](encoder.parameters(), lr=lr)
     null_optimizer = optimizer_map[optimizer](null_head.parameters(), lr=lr)
+
+    # SECTION Reward function
+    reward_function = func_from_str(config["embed"]["reward_function"])
 
     # SECTION UI
     initial_data = {"train_loss": float("nan"),
@@ -154,36 +163,37 @@ def run_training(config: dict[str, dict[str, any]]):
                     "batch": "0",
                     "rate": float("nan")}
     train_steps = len(train_dataset)
-    if config["embed"]["value_type"] != "known":
-        # Then we're training the embedding agent as well, so we go through
-        # the train dataset twice
-        train_steps *= 2
     match config["train"]["ui"]:
         case "tqdm":
             ui = TqdmUI(train_steps, len(valid_dataset),
                         config["train"]["epochs"], initial_data)
         case "gui":
             raise NotImplementedError("GUI has not been implemented yet.")
+        case "cluster_ui":
+            ui = ClusterLoggerUI(train_steps, len(valid_dataset),
+                                 config["train"]["epochs"], initial_data)
         case _:
             raise ValueError(f"{config['train']['ui']} is not one of the "
                              f"available options."
-                             f"Available options are [`tqdm`, `gui`]")
+                             f"Available options are [`tqdm`, `cluster_ui`]")
 
     ui.update_status("Preparation complete. Starting training...")
 
     # SECTION Run training
     checkpoint_dir = config["train"]["checkpoint_dir"]
     training = Training(
-        bvp_pipeline,                                     # BVP Pipeline
-        encoder, null_head,                               # Models
-        embed_agent, null_agent,                          # Embed agents
-        encoder_optimizer, null_optimizer,                # Optimizers
-        loss_fn,                                          # Loss function
-        run, checkpoint_dir, ui,                          # Utils
-        agent_start_epoch=config["embed"]["start_epoch"]  # Embed config
+        bvp_pipeline,                                      # BVP Pipeline
+        encoder, null_head,                                # Models
+        embed_agent, null_agent,                           # Embed agents
+        encoder_optimizer, null_optimizer,                 # Optimizers
+        loss_fn,                                           # Loss function
+        run, checkpoint_dir, ui,                           # Utils
+        optimizer_map[optimizer], lr,                      # Optimizer
+        reward_function,                                   # Reward function
+        agent_start_epoch=config["embed"]["start_epoch"],  # Embed config
+        embed_value_type=config["embed"]["value_type"],    # Embed config
     )
     training.train(
-        train_embedding_agent=config["embed"]["value_type"] != "known",
         train_loader=train_dataloader,
         valid_loader=valid_dataloader,
         epochs=config["train"]["epochs"],

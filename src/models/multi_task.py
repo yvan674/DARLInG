@@ -6,6 +6,7 @@ Author:
     Yvan Satyawan <y_satyawan@hotmail.com>
     Jonas Niederle <github.com/jmniederle>
 """
+import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
@@ -121,6 +122,7 @@ class MultiTaskHead(nn.Module):
         super().__init__()
 
         in_features = domain_label_size + encoder_latent_dim
+        self.domain_label_size = domain_label_size
 
         self.decoder = Decoder(decoder_ac_func,
                                decoder_dropout,
@@ -138,3 +140,37 @@ class MultiTaskHead(nn.Module):
         y_gesture = self.predictor(z)
 
         return y_bvp, y_gesture
+
+
+def run_heads(null_head: MultiTaskHead,
+              embed_head: MultiTaskHead,
+              null_embedding: torch.Tensor,
+              agent_embedding: torch.Tensor,
+              z: torch.Tensor):
+    """Runs both heads together.
+
+    Args:
+        null_head: The multitask head for the null embedding
+        embed_head: The multitask head for the agent embedding
+        null_embedding: The null embedding. Must be shape
+            [batch_size, domain_embedding_dim].
+        agent_embedding: The actual embedding. Must be shape
+            [batch_size, domain_embedding_dim].
+        z: The z value produced by the encoder. Must be in the shape
+            [batch_size, latent_embedding_dim].
+
+    Returns:
+        bvp_null, gesture_null, bvp_embed, gesture_embed. Embed values are
+        None if the embed_head is None.
+    """
+    bvp_null, gesture_null = null_head(
+        torch.cat([z, null_embedding], dim=1)
+    )
+    if embed_head is not None:
+        bvp_embed, gesture_embed = embed_head(
+            torch.cat([z, agent_embedding], dim=1)
+        )
+    else:
+        bvp_embed, gesture_embed = None, None
+
+    return bvp_null, gesture_null, bvp_embed, gesture_embed

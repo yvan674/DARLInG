@@ -16,7 +16,7 @@ from signal_to_image.base import SignalToImageTransformer
 class RP(SignalToImageTransformer):
     def __init__(self,
                  dimension: int | float = 1,
-                 time_delay: int | float = 1,
+                 time_delay: int | float = 50,
                  threshold: any = None,
                  percentage: int | float = 10,
                  flatten: bool = False):

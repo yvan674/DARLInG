@@ -2,14 +2,15 @@
 
 Generates transformed data before running training.
 """
-import pickle
 from argparse import ArgumentParser
 from pathlib import Path
 from shutil import rmtree
 
+import numpy as np
 from tqdm import tqdm
 
 from data_utils.widar_dataset import WidarDataset
+from signal_processing.pipeline import Pipeline
 from utils.config_parser import parse_config_file
 
 
@@ -20,8 +21,11 @@ def parse_args():
     return p.parse_args()
 
 
-def open_and_generate(config: dict[str, any], split: str,
-                      out_dir: Path):
+def open_and_generate(config: dict[str, any],
+                      split: str,
+                      out_dir: Path,
+                      amp_pipeline: Pipeline,
+                      phase_pipeline: Pipeline):
     """Opens a dataset, generates the appropriate transformation, and saves it.
 
     Args:
@@ -29,40 +33,32 @@ def open_and_generate(config: dict[str, any], split: str,
         split: Data split to handle.
         out_dir: The directory for where the pregenerated files should be
             generated in.
+        amp_pipeline: Pipeline to push through the amp CSI signal.
+        phase_pipeline: Pipeline to push through the phase CSI signal.
     """
     # Create the directory if it doesn't exist
     (out_dir / split).mkdir(exist_ok=True, parents=True)
 
-    # Remove the pytorch to tensor step
-    amp_pipeline = config["amp_pipeline"]
-    amp_pipeline.processors = amp_pipeline.processors[:-1]
-    phase_pipeline = config["phase_pipeline"]
-    phase_pipeline.processors = phase_pipeline.processors[:-1]
+    dataset = WidarDataset(root_path=config["data_dir"], split_name=split,
+                           dataset_type=config["dataset_type"],
+                           return_bvp=False, return_csi=True,
+                           amp_pipeline=amp_pipeline,
+                           phase_pipeline=phase_pipeline,
+                           pregenerated=False)
 
-    dataset = WidarDataset(
-        root_path=config["data_dir"],
-        split_name=split,
-        dataset_type=config["dataset_type"],
-        downsample_multiplier=config["downsample_multiplier"],
-        return_bvp=False,
-        return_csi=True,
-        amp_pipeline=amp_pipeline,
-        phase_pipeline=phase_pipeline
-    )
-
-    for x_amp, x_phase, _, info in dataset:
-        data = (x_amp, x_phase)
-
+    for x_amp, x_phase, _, info in tqdm(dataset):
         # Since we get an aggregated all receiver view of the data, we
         # can save it without the receiver identifier. We also add
-        # file type .pkl since this is a pickle file.
-        out_name = info["csi_fps"][0].name.split("-r")[0] + ".pkl"
+        # file type .npz since this is a compressed npz file.
+        out_name = info["csi_fps"][0].name.split("-r")[0] + ".npz"
         out_fp = out_dir / split / out_name
 
-        with open(out_fp, "wb") as f:
-            pickle.dump(data, f)
+        # Note that we tried also to save only the upper triangle since
+        # the matrices are symmetric. This did not result in disk footprint
+        # reduction, probably due to the compression algorithm.
 
-        print("hello")
+        with open(out_fp, "wb") as f:
+            np.savez_compressed(f, x_amp=x_amp, x_phase=x_phase)
 
 
 def pregenerate_transforms(config_file: Path):
@@ -75,7 +71,13 @@ def pregenerate_transforms(config_file: Path):
     """
     config = parse_config_file(config_file)["data"]
 
-    pregenerated_dir = config["data_dir"] / "pregenerated"
+    pregenerated_dir = (config["data_dir"] /
+                        f"pregenerated_{config['dataset_type']}")
+
+    data_dir = config["data_dir"] / ("widar_" + config["dataset_type"])
+
+    if not data_dir.exists():
+        raise FileNotFoundError(f"Data dir {data_dir} does not exist.")
 
     if pregenerated_dir.exists():
         # Delete all file recursively inside of this directory
@@ -83,8 +85,18 @@ def pregenerate_transforms(config_file: Path):
     else:
         pregenerated_dir.mkdir()
 
+    # Remove the pytorch to tensor step
+    amp_pipe = config["amp_pipeline"]
+    amp_pipe.processors = amp_pipe.processors[:-1]
+    phase_pipe = config["phase_pipeline"]
+    phase_pipe.processors = phase_pipe.processors[:-1]
+
     for split in ["train", "validation", "test"]:
-        open_and_generate(config, split, pregenerated_dir)
+        if config["dataset_type"] == "full":
+            raise NotImplementedError("Full not yet implemented.")
+        elif (data_dir / split).exists():
+            open_and_generate(config, split, pregenerated_dir,
+                              amp_pipe, phase_pipe)
 
 
 if __name__ == '__main__':

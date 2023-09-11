@@ -35,14 +35,30 @@ class AmpPhaseEncoder(nn.Module):
         self.phase_encoder = Encoder(conv_ac_func, dropout, latent_dim,
                                      fc_input_size, input_dim,
                                      initial_kernel_size, conv_output_sizes)
+        self.latent_dim = self.amp_encoder.latent_dim
 
     def forward(self, amp, phase, bvp):
         z_amp, mu_amp, log_sigma_amp = self.amp_encoder(amp)
         z_phase, mu_phase, log_sigma_phase = self.phase_encoder(phase)
 
-        return (torch.cat((z_amp, z_phase)),
-                torch.cat((mu_amp, mu_phase)),
-                torch.cat((log_sigma_amp, log_sigma_phase)))
+        z_amp = z_amp.unsqueeze(1)
+        mu_amp = mu_amp.unsqueeze(1)
+        log_sigma_amp = log_sigma_amp.unsqueeze(1)
+        z_phase = z_phase.unsqueeze(1)
+        mu_phase = mu_phase.unsqueeze(1)
+        log_sigma_phase = log_sigma_phase.unsqueeze(1)
+
+        z = torch.cat((z_amp, z_phase), dim=2).reshape(
+            -1, self.latent_dim * 2
+        )
+        mu = torch.cat((mu_amp, mu_phase), dim=2).reshape(
+            -1, self.latent_dim * 2
+        )
+        log_sigma = torch.cat((log_sigma_amp, log_sigma_phase), dim=2).reshape(
+            -1, self.latent_dim * 2
+        )
+
+        return z, mu, log_sigma
 
 
 class BVPEncoder(nn.Module):
@@ -63,6 +79,7 @@ class BVPEncoder(nn.Module):
         self.encoder = Encoder(conv_ac_func, dropout, latent_dim, fc_input_size,
                                input_dim, initial_kernel_size,
                                conv_output_sizes)
+        self.latent_dim = self.encoder.latent_dim
 
     def forward(self, amp, phase, bvp):
         return self.encoder(bvp)
@@ -145,6 +162,7 @@ class Encoder(nn.Module):
         mu = self.fc_mu(h)
         log_sigma = self.fc_sigma(h)
         z = self.reparameterization(mu, log_sigma)
+        z = torch.sigmoid(z)
 
         return z, mu, log_sigma
 

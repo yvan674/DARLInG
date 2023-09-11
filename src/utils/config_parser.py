@@ -89,9 +89,9 @@ def data_config(data_dir: str | Path = Path("../../data/"),
         case "gaf":
             transform = GAF()
         case "mtf":
-            transform = MTF()
+            transform = MTF(image_size=1.)
         case "rp":
-            transform = RP()
+            transform = RP(time_delay=1)
         case None:
             transform = None
         case _:
@@ -183,6 +183,8 @@ def mt_config(decoder_dropout: float = 0.3,
 
 
 def embed_config(value_type: str = "known",
+                 agent_type: str = "known",
+                 reward_function: str = "contrastive",
                  embed_size: Optional[int] = None,
                  start_epoch: int = 0,
                  epochs: int = 1,
@@ -206,6 +208,10 @@ def embed_config(value_type: str = "known",
     Args:
         value_type: How to embed the agent. Options are
             [`known`, `one-hot`, `probability-measure`].
+        agent_type: Agent type. Options are
+            [`known`, `ddpg`, `ppo`]
+        reward_function: The reward function to use. Options are
+            [`contrastive`]
         embed_size: Size of the embedding. None is only allowed if the
             embed_agent_value is `known` and is automatically replaced by 33.
         epochs: Number of epochs to train the embedding agent for.
@@ -233,6 +239,8 @@ def embed_config(value_type: str = "known",
     if embed_size is None:
         embed_size = 33
     return {"value_type": value_type,
+            "agent_type": agent_type,
+            "reward_function": reward_function,
             "embed_size": embed_size,
             "start_epoch": start_epoch,
             "epochs": epochs,
