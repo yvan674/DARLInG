@@ -71,7 +71,7 @@ def visualize_space(space, colors, legend_ncols, space_name, plot_title,
                   loc="upper center", bbox_to_anchor=(0.5, -0.05),
                   ncol=legend_ncols, title=legend_title)
     plt.title(f"{space_name} ({plot_title})")
-    plt.savefig(f"../../figures/{space_name}_{plot_title}.png")
+    plt.savefig(f"figures/{space_name}_{plot_title}.png")
 
 
 def main(checkpoint_fp: Path, agent_checkpoint_fp: Path,
@@ -189,7 +189,7 @@ def main(checkpoint_fp: Path, agent_checkpoint_fp: Path,
             visualize_space(user_space, user_gesture.tolist(),
                             6,
                             space_name,
-                            f"t-SNE for user {user} by gesture",
+                            f"user {user} by gesture",
                             "Gesture")
 
 
