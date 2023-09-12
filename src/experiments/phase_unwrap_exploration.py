@@ -23,9 +23,9 @@ from pathlib import Path
 import random
 
 from tqdm import tqdm
+from matplotlib import pyplot as plt
 import numpy as np
 
-from signal_processing import plot_many_signals
 from signal_processing.lowpass_filter import LowPassFilter
 from signal_processing.phase_derivative import PhaseDerivative
 from signal_processing.phase_filter import PhaseFilter
@@ -49,7 +49,7 @@ def explore_phases(root_path: Path):
     }
 
     data = WidarDataset(root_path, "train",
-                        "single_user_small",
+                        "full",
                         return_bvp=False, pregenerated=False)
 
     sample_idxs = random.sample(range(len(data)), len(data) // 10)
@@ -77,13 +77,30 @@ def explore_phases(root_path: Path):
         labels.append(gesture)
         colors.append(gesture_color_map[gesture])
 
-    plot_many_signals(t, signals, labels, colors,
-                      "Unwrapped Phase Distribution",
-                      show_legend=False)
+    # Plot the signals as scatter line charts with a rotated histogram
+    # to the right indicating the final distribution of the values at
+    # t=t_cutoff, with no legend
+    fig, ax = plt.subplots(1, 2, figsize=(8, 4), sharey=True,
+                           gridspec_kw={"width_ratios": [3, 1]})
+    plt.subplots_adjust(wspace=0.1)
+    fig.set_dpi(300)
+    ax[0].set_title("Phase Unwrapped Signals")
+    ax[0].set_xlabel("Time (ms)")
+    ax[0].set_ylabel("Phase Unwrapped Value")
+    ax[0].set_xlim(0, t_cutoff)
 
-    plot_many_signals(t, diff_signals, labels, colors,
-                      "Derivative of unwrapped phase distribution",
-                      show_legend=False)
+    for signal, label, color in zip(signals, labels, colors):
+        ax[0].plot(t, signal, label=label, color=color)
+
+    ax[1].set_title("Final Phase Unwrapped Values")
+    ax[1].set_xlabel("Count")
+    ax[1].hist([signal[-1] for signal in signals],
+               bins=40,
+               orientation="horizontal")
+    # Change histogram so it has a size of 2x1, where 2 is the height
+    # and 1 is the width
+
+    plt.show()
 
 
 if __name__ == '__main__':
