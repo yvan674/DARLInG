@@ -9,6 +9,7 @@ Research Questions:
 
 Answers:
     As of 1.6.2023 at 17:20, no it does not.
+    Forgot to update this, but as of 7.6.2023, it does work.
 
 Author:
     Yvan Satyawan <y_satyawan@hotmail.com>

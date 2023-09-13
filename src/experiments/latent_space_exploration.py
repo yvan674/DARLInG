@@ -1,4 +1,17 @@
-"""Latent Space Exploration."""
+"""Latent Space Exploration.
+
+It seems it's unclear whether or not we're actually doing anything.
+We'd like to generate t-SNE plots of the latent space and domain embeddings
+to see if there is any underlying structure there.
+
+Research Questions:
+    - Is there any structure in the t-SNE plots of the outputs of the encoder
+      and RL agents?
+
+Answer:
+    There are underlying structures for the latent space, but structures only
+    appear in the domain embeddings on the extended run.
+"""
 import copy
 from argparse import ArgumentParser, Namespace
 from pathlib import Path
