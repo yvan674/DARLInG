@@ -1,17 +1,15 @@
 """Model Builder.
 
-The models are now much more variable so requires
+The models are now much more variable so requires this to build them.
 """
 from time import perf_counter
 
 import torch
 import torch.nn as nn
-from stable_baselines3 import DDPG
 
 from data_utils.widar_dataset import WidarDataset
 from models.encoder import Encoder, BVPEncoder, AmpPhaseEncoder
 from models.multi_task import MultiTaskHead
-from models.known_domain_agent import KnownDomainAgent
 from models.null_agent import NullAgent
 
 ACTIVATION_FN_MAP = {"relu": nn.ReLU,

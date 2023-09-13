@@ -2,6 +2,7 @@
 
 This loss function is taken directly from our solution of 2AMM10 Deep Learning,
 Assignment 4.
+This is only used for MNIST
 """
 import torch
 import torch.nn as nn
