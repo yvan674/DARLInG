@@ -16,8 +16,8 @@ def parse_args():
     p.add_argument("DATA_FP", type=Path,
                    help="Path to the Widar3.0 directory.")
     p.add_argument("SPLIT_TYPE", type=str,
-                   help="Type of split to process. Options are `small` or "
-                        "`single_domain`")
+                   help="Type of split to process. Uses the index file suffix"
+                        "to find the appropriate index file.")
 
     args = p.parse_args()
 
