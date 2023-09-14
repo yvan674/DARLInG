@@ -1,11 +1,12 @@
-# DARLInG
+DARLInG
+=======
 
-![DARLInG Banner showing the model logo and the name](media/github-repo-banner.png)
 Domain Auto-labeling through Reinforcement Learning for the Inference of Gestures
 
-This is the repository for Yvan Satyawan's Master Thesis.
+This is the code repository for Yvan Satyawan's Master Thesis.
 
-## Preparing the dataset
+Preparing the dataset
+---------------------
 
 We must first prepare the dataset by generating indexes of the data and calculating its mean and standard deviation for standardization later on.
 
@@ -23,13 +24,15 @@ We must first prepare the dataset by generating indexes of the data and calculat
 4. Pregenerate transformations, as they take too long to generate during training, using `src/data_utils/pregenerate_transform.py`
    - Run using the config file for a given experiment with `pregenerate_transform.py [PATH_TO_CONFIG_FILE]`.
 
-## Config File
+Config File
+-----------
 
 Config files can be generated to ensure that runs are consistent.
 Our used experimental run configuration files are stored in the `run_configs` directory as YAML files.
 `utils/config_parser.py` contain the full list of possible configuration parameters.
 
-## Training the model
+Training the model
+------------------
 
 DARLInG is trained by `experiments/train_runner.py`.
 It is run by using `train_runner.py [PATH_TO_CONFIG_FILE]`.
@@ -38,12 +41,15 @@ Hyperparameter sweeps with Weights and Biases can be done by pointing weights an
 This runner accepts command line arguments instead of a YAML file to initialize training.
 Internally, it's transforming the command line arguments into a dictionary and running the dictionary through the standard config parser.
 
-## All the other files
+All the other files
+-------------------
 
 All the other files and scripts are carefully documented with Python Docstrings to indicate what they do and how they work, but are not strictly necessary to run training usually.
 `train_runner.py` is for general model training, `train.py` hosts the main training loop code, and `final_experiment_runner.py` contains code to repeatedly call `train_runner.py` on multiple configurations without causing any memory issues.
 All other scripts in `experiments/` also contain the motivation of the script, the question the script attempts to answer, and the answer.
-## Widar3.0
+
+Widar3.0
+--------
 
 These are mostly notes to myself to understand what the data looks like.
 
