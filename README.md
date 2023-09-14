@@ -1,6 +1,7 @@
 DARLInG
 =======
 
+![DARLInG Banner showing the model logo and the name](media/github-repo-banner.png)
 Domain Auto-labeling through Reinforcement Learning for the Inference of Gestures
 
 This is the code repository for Yvan Satyawan's Master Thesis.
