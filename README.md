@@ -156,22 +156,3 @@ We only use gestures 1-6, since these are the gestures which have samples from a
 For single domain, we use only User 2 in Room 1 with torso location 1 and face orientation 1.
 This was chosen as it has the largest number of samples.
 Test, validation, and training splits are randomly generated.
-
-
-### Small Dataset
-
-We create a small version of the  dataset containing 2 repetitions of each action and only 10% of all available data.
-
-Torso locations in each room and in general are balance for torso locations 1-5.
-Torso location 6-8 only exists in room 1 with user 1.
-
-Face orientation is balanced as well.
-All face orientations are done by every user in every room they participate in.
-
-Gestures are balanced for each user, i.e., user 1 does every gesture the same number of times, but gestures are not balanced overall.
-We only use gestures 1-6
-
-Our approach is:
-1. Select those room ids and user ids, and torso locations as listed above.
-2. Choose a 10% stratified random set, stratified based on room id, user id, and gesture
-3. Choose 2 random repetitions for each sample
