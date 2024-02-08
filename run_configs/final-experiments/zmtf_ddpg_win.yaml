@@ -28,7 +28,7 @@ embed:
   reward_function: maximize_difference
   start_epoch: 15
   value_type: probability-measure
-  epochs: 2
+  epochs: 1
 encoder:
   activation_fn: leaky
   dropout: 0.18
